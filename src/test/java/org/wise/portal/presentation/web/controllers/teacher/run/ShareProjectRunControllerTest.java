@@ -31,17 +31,13 @@ import static org.easymock.EasyMock.verify;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
-
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.AbstractModelAndViewTests;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.support.SessionStatus;
-import org.springframework.web.servlet.ModelAndView;
 import org.wise.portal.dao.ObjectNotFoundException;
 import org.wise.portal.domain.impl.AddSharedTeacherParameters;
 import org.wise.portal.domain.run.Run;
@@ -49,7 +45,7 @@ import org.wise.portal.domain.run.impl.RunImpl;
 import org.wise.portal.domain.user.User;
 import org.wise.portal.domain.user.impl.UserImpl;
 import org.wise.portal.service.authentication.UserDetailsService;
-import org.wise.portal.service.offering.RunService;
+import org.wise.portal.service.run.RunService;
 import org.wise.portal.service.user.UserService;
 
 /**
@@ -65,29 +61,29 @@ public class ShareProjectRunControllerTest extends AbstractModelAndViewTests {
 	private static final String USERNAME = "sumoman";
 
 	private ShareProjectRunController shareProjectRunController;
-	
+
 	private MockHttpServletRequest request;
 
 	private MockHttpServletResponse response;
 
 	private RunService mockRunService;
-	
+
 	private UserService mockUserService;
 
 	private static final Long RUNID = new Long(4);
-	
+
 	private BindingResult errors;
-	
+
 	private SessionStatus status;
-	
+
 	private Model model;
-	
+
 	private Run run;
-	
+
 	private User user;
-	
+
 	private AddSharedTeacherParameters addSharedTeacherParameters;
-	
+
 	/**
 	 * @see junit.framework.TestCase#setUp()
 	 */
@@ -96,9 +92,9 @@ public class ShareProjectRunControllerTest extends AbstractModelAndViewTests {
 		this.request = new MockHttpServletRequest();
 		this.response = new MockHttpServletResponse();
 		this.request.setParameter(ShareProjectRunController.RUNID_PARAM_NAME, RUNID.toString());
-		
+
 		this.user = new UserImpl();
-		
+
 		this.mockRunService = createMock(RunService.class);
 		this.mockUserService = createMock(UserService.class);
 		run = new RunImpl();
@@ -110,12 +106,12 @@ public class ShareProjectRunControllerTest extends AbstractModelAndViewTests {
 		addSharedTeacherParameters.setPermission(UserDetailsService.RUN_READ_ROLE);
 		addSharedTeacherParameters.setRun(run);
 		addSharedTeacherParameters.setSharedOwnerUsername(USERNAME);
-		
+
 		errors = new BindException(addSharedTeacherParameters, "");
-		
+
 		shareProjectRunController = new ShareProjectRunController();
 	}
-	
+
 	/**
 	 * @see junit.framework.TestCase#tearDown()
 	 */
@@ -126,23 +122,23 @@ public class ShareProjectRunControllerTest extends AbstractModelAndViewTests {
 		this.mockRunService = null;
 		this.shareProjectRunController = null;
 	}
-	
+
 	public void testOnSubmit_success() throws ObjectNotFoundException {
 		expect(mockUserService.retrieveUserByUsername(USERNAME)).andReturn(user);
 		replay(mockUserService);
-		mockRunService.addSharedTeacherToRun(addSharedTeacherParameters);
-		expectLastCall();		
+		mockRunService.addSharedTeacher(addSharedTeacherParameters);
+		expectLastCall();
 		replay(mockRunService);
-		
+
 		String view = this.shareProjectRunController.onSubmit(addSharedTeacherParameters, errors, request, model, status);
 		verify(mockUserService);
 		verify(mockRunService);
 	}
-	
+
 	public void testOnSubmit_failure() throws ObjectNotFoundException {
 		expect(mockUserService.retrieveUserByUsername(USERNAME)).andReturn(user);
 		replay(mockUserService);
-		mockRunService.addSharedTeacherToRun(addSharedTeacherParameters);
+		mockRunService.addSharedTeacher(addSharedTeacherParameters);
 		expectLastCall().andThrow(new ObjectNotFoundException("run not found", Run.class));
 		replay(mockRunService);
 		String view = this.shareProjectRunController.onSubmit(addSharedTeacherParameters, errors, request, model, status);

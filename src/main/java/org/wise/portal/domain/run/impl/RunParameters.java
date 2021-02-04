@@ -1,9 +1,9 @@
 /**
- * Copyright (c) 2007-2015 Encore Research Group, University of Toronto
+ * Copyright (c) 2007-2017 Encore Research Group, University of Toronto
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -25,233 +25,110 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.wise.portal.domain.project.Project;
 import org.wise.portal.domain.user.User;
+
+import java.io.Serializable;
+import java.util.*;
 
 /**
  * @author Laurel Williams
  */
-public class RunParameters extends OfferingParameters implements Serializable {
+@Getter
+@Setter
+public class RunParameters implements Serializable {
 
-	private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-	private Set<String> periodNames = new TreeSet<String>();
-	
-	private Set<String> runIdsToArchive = new TreeSet<String>();
-	
-	private User owner;
-	
-	private Project project;
-	
-	private String manuallyEnteredPeriods = new String();
+  private String name;
 
-	private Integer maxWorkgroupSize = 3;
-	
-	private Integer loggingLevel = 5;
-	
-	private Integer postLevel = 5;
-	
-	private Locale locale;
-	
-	private Boolean enableRealTime = false;
-	
-	/**
-	 * @return <code>Integer</code> the maximum size of workgroup
-	 */
-	public Integer getMaxWorkgroupSize() {
-		return maxWorkgroupSize;
-	}
+  private Set<String> periodNames = new TreeSet<String>();
 
-	/**
-	 * @param <code>Integer</code> maxWorkgroupSize
-	 */
-	public void setMaxWorkgroupSize(Integer maxWorkgroupSize) {
-		this.maxWorkgroupSize = maxWorkgroupSize;
-	}
+  private Set<String> runIdsToArchive = new TreeSet<String>();
 
-	/**
-	 * @return the periodNames
-	 */
-	public Set<String> getPeriodNames() {
-		return periodNames;
-	}
+  private User owner;
 
-	/**
-	 * @param periodNames the periodNames to set
-	 */
-	public void setPeriodNames(Set<String> periodNames) {
-		this.periodNames = periodNames;
-	}
+  private Project project;
 
-	/**
-	 * @return the owner
-	 */
-	public User getOwner() {
-		return owner;
-	}
+  private String manuallyEnteredPeriods = new String();
 
-	/**
-	 * @param owner the owner to set
-	 */
-	public void setOwner(User owner) {
-		this.owner = owner;
-	}
-	
-	/**
-	 * @param manuallyEnteredPeriods the manuallyEnteredPerios to set
-	 */
-	public void setManuallyEnteredPeriods(String text){
-		this.manuallyEnteredPeriods = text;
-	}
-	
-	/**
-	 * @return manuallyEnteredPeriods
-	 */
-	public String getManuallyEnteredPeriods(){
-		return this.manuallyEnteredPeriods;
-	}
+  private Integer maxWorkgroupSize = 3;
 
-	/**
-	 * @return the project
-	 */
-	public Project getProject() {
-		return project;
-	}
+  private Integer loggingLevel = 5;
 
-	/**
-	 * @param project the project to set
-	 */
-	public void setProject(Project project) {
-		this.project = project;
-	}
-	
-	public String printAllPeriods() {
-		String allPeriods = null;
-		
-		if(periodNames.isEmpty()) {
-			allPeriods = getManuallyEnteredPeriods();
-		} else {
-			allPeriods = getPeriodNames().toString();
-		}
-		
-		return allPeriods;
-	}
+  private Integer postLevel = 5;
 
-	/**
-	 * @return the runIdsToArchive
-	 */
-	public Set<String> getRunIdsToArchive() {
-		return runIdsToArchive;
-	}
+  private Locale locale;
 
-	/**
-	 * @param runIdsToArchive the runIdsToArchive to set
-	 */
-	public void setRunIdsToArchive(Set<String> runIdsToArchive) {
-		this.runIdsToArchive = runIdsToArchive;
-	}
+  private Boolean enableRealTime = false;
 
-	/**
-	 * @see java.lang.Object#hashCode()
-	 */
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime
-				* result
-				+ ((manuallyEnteredPeriods == null) ? 0
-						: manuallyEnteredPeriods.hashCode());
-		result = prime * result + ((owner == null) ? 0 : owner.hashCode());
-		result = prime * result
-				+ ((periodNames == null) ? 0 : periodNames.hashCode());
-		result = prime * result + ((project == null) ? 0 : project.hashCode());
-		result = prime * result
-				+ ((runIdsToArchive == null) ? 0 : runIdsToArchive.hashCode());
-		return result;
-	}
+  private Date startTime = Calendar.getInstance().getTime();
 
-	/**
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		final RunParameters other = (RunParameters) obj;
-		if (manuallyEnteredPeriods == null) {
-			if (other.manuallyEnteredPeriods != null)
-				return false;
-		} else if (!manuallyEnteredPeriods.equals(other.manuallyEnteredPeriods))
-			return false;
-		if (owner == null) {
-			if (other.owner != null)
-				return false;
-		} else if (!owner.equals(other.owner))
-			return false;
-		if (periodNames == null) {
-			if (other.periodNames != null)
-				return false;
-		} else if (!periodNames.equals(other.periodNames))
-			return false;
-		if (project == null) {
-			if (other.project != null)
-				return false;
-		} else if (!project.equals(other.project))
-			return false;
-		if (runIdsToArchive == null) {
-			if (other.runIdsToArchive != null)
-				return false;
-		} else if (!runIdsToArchive.equals(other.runIdsToArchive))
-			return false;
-		return true;
-	}
+  private Date endTime = null;
 
-	/**
-	 * @return the loggingLevel
-	 */
-	public Integer getLoggingLevel() {
-		return loggingLevel;
-	}
+  private Boolean isLockedAfterEndDate = false;
 
-	/**
-	 * @param loggingLevel the loggingLevel to set
-	 */
-	public void setLoggingLevel(Integer loggingLevel) {
-		this.loggingLevel = loggingLevel;
-	}
+  public String printAllPeriods() {
+    String allPeriods = null;
 
-	/**
-	 * @return the postLevel
-	 */
-	public Integer getPostLevel() {
-		return postLevel;
-	}
+    if (periodNames.isEmpty()) {
+      allPeriods = getManuallyEnteredPeriods();
+    } else {
+      allPeriods = getPeriodNames().toString();
+    }
 
-	/**
-	 * @param postLevel the postLevel to set
-	 */
-	public void setPostLevel(Integer postLevel) {
-		this.postLevel = postLevel;
-	}
+    return allPeriods;
+  }
 
-	public Locale getLocale() {
-		return locale;
-	}
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result
+        + ((manuallyEnteredPeriods == null) ? 0 : manuallyEnteredPeriods.hashCode());
+    result = prime * result + ((owner == null) ? 0 : owner.hashCode());
+    result = prime * result + ((periodNames == null) ? 0 : periodNames.hashCode());
+    result = prime * result + ((project == null) ? 0 : project.hashCode());
+    result = prime * result + ((runIdsToArchive == null) ? 0 : runIdsToArchive.hashCode());
+    return result;
+  }
 
-	public void setLocale(Locale locale) {
-		this.locale = locale;
-	}
-
-	public Boolean getEnableRealTime() {
-		return enableRealTime;
-	}
-
-	public void setEnableRealTime(Boolean enableRealTime) {
-		this.enableRealTime = enableRealTime;
-	}
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    final RunParameters other = (RunParameters) obj;
+    if (manuallyEnteredPeriods == null) {
+      if (other.manuallyEnteredPeriods != null)
+        return false;
+    } else if (!manuallyEnteredPeriods.equals(other.manuallyEnteredPeriods))
+      return false;
+    if (owner == null) {
+      if (other.owner != null)
+        return false;
+    } else if (!owner.equals(other.owner))
+      return false;
+    if (periodNames == null) {
+      if (other.periodNames != null)
+        return false;
+    } else if (!periodNames.equals(other.periodNames))
+      return false;
+    if (project == null) {
+      if (other.project != null)
+        return false;
+    } else if (!project.equals(other.project))
+      return false;
+    if (runIdsToArchive == null) {
+      if (other.runIdsToArchive != null)
+        return false;
+    } else if (!runIdsToArchive.equals(other.runIdsToArchive))
+      return false;
+    return true;
+  }
 }

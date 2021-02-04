@@ -3,7 +3,7 @@
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -20,7 +20,15 @@
  */
 package org.wise.portal.dao.authentication.impl;
 
-import org.springframework.dao.support.DataAccessUtils;
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
+
+import org.hibernate.Session;
 import org.springframework.stereotype.Repository;
 import org.wise.portal.dao.authentication.AclSidDao;
 import org.wise.portal.dao.impl.AbstractHibernateDao;
@@ -31,49 +39,35 @@ import org.wise.portal.domain.authentication.impl.PersistentAclSid;
  * This class is not being used. Tried to implement Hibernate versions of the acl
  * services and became bogged down, so went back to jdbc versions. Keeping this
  * class around in case we want to try again later.
- * 
+ *
  * @author Cynick Young
  */
 @Repository
 public class HibernateAclSidDao extends AbstractHibernateDao<MutableAclSid>
-        implements AclSidDao<MutableAclSid> {
+    implements AclSidDao<MutableAclSid> {
 
-    private static final String FIND_ALL_QUERY = "from PersistentAclSid";
+  @PersistenceContext
+  private EntityManager entityManager;
 
-    // /**
-    // * @see
-    // net.sf.sail.webapp.dao.impl.AbstractHibernateDao#save(java.lang.Object)
-    // */
-    // @Override
-    // public void save(MutableAclSid object) {
-    // this.g
-    // }
-    //
-    /**
-     * @see org.wise.portal.dao.impl.AbstractHibernateDao#getDataObjectClass()
-     */
-    @Override
-    protected Class<PersistentAclSid> getDataObjectClass() {
-        return PersistentAclSid.class;
-    }
+  private static final String FIND_ALL_QUERY = "from PersistentAclSid";
 
-    /**
-     * @see org.wise.portal.dao.impl.AbstractHibernateDao#getFindAllQuery()
-     */
-    @Override
-    protected String getFindAllQuery() {
-        return FIND_ALL_QUERY;
-    }
+  @Override
+  protected Class<PersistentAclSid> getDataObjectClass() {
+    return PersistentAclSid.class;
+  }
 
-    /**
-     * @see org.wise.portal.dao.authentication.AclSidDao#retrieveBySidName(java.lang.String)
-     */
-    public MutableAclSid retrieveBySidName(String sidName) {
-        return (MutableAclSid) DataAccessUtils
-                .uniqueResult(this
-                        .getHibernateTemplate()
-                        .findByNamedParam(
-                                "from PersistentAclSid as sid where sid.sidName = :sidName",
-                                "sidName", sidName));
-    }
+  @Override
+  protected String getFindAllQuery() {
+    return FIND_ALL_QUERY;
+  }
+
+  public MutableAclSid retrieveBySidName(String sidName) {
+    Session session = this.getHibernateTemplate().getSessionFactory().getCurrentSession();
+    CriteriaBuilder cb = session.getCriteriaBuilder();
+    CriteriaQuery<PersistentAclSid> cq = cb.createQuery(PersistentAclSid.class);
+    Root<PersistentAclSid> persistentAclSidRoot = cq.from(PersistentAclSid.class);
+    cq.select(persistentAclSidRoot).where(cb.equal(persistentAclSidRoot.get("sidName"), sidName));
+    TypedQuery<PersistentAclSid> query = entityManager.createQuery(cq);
+    return query.getResultStream().findFirst().orElse(null);
+  }
 }

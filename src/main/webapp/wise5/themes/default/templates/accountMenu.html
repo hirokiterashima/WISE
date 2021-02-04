@@ -3,10 +3,11 @@
     <md-list class="account-menu__info__title account-menu__users">
         <md-list-item>
             <div class="md-avatar">
-                <md-icon class="md-48" style="color: {{themeCtrl.getAvatarColorForWorkgroupId(themeCtrl.workgroupId)}};"> account_circle </md-icon>
+                <md-icon class="md-48" style="color: {{::themeCtrl.getAvatarColorForWorkgroupId(themeCtrl.workgroupId)}};"> account_circle </md-icon>
             </div>
             <div class="md-list-item-text">
-                <span ng-repeat="userName in themeCtrl.workgroupUserNames">{{userName.name}}<span ng-if="!$last">,&nbsp;</span></span>&nbsp;<span class="account-menu__info__team" translate="accountMenuTeam" translate-value-id="{{themeCtrl.workgroupId}}">
+                <span ng-repeat="username in ::themeCtrl.workgroupUsernames">{{::username.name}}<span ng-if="!$last">,&nbsp;</span></span>&nbsp;
+                <span class="account-menu__info__team" translate="accountMenuTeam" translate-value-id="{{::themeCtrl.workgroupId}}"></span>
             </div>
         </md-list-item>
     </md-list>
@@ -20,11 +21,12 @@
         </div>
         <span flex></span>
         <md-progress-linear md-mode="determinate" value="{{themeCtrl.rootNodeStatus.progress.completionPct}}"></md-progress-linear>
-        <h3 class="accent-2">{{themeCtrl.rootNodeStatus.progress.completionPct}}%</h3>
+        <h3 class="accent-1">{{themeCtrl.rootNodeStatus.progress.completionPct}}%</h3>
     </div>
 </div>
-<md-divider ng-if="!themeCtrl.hideTotalScores && vleController.maxScore != null"></md-divider>
-<div class="account-menu__info" ng-if="!themeCtrl.hideTotalScores && vleController.maxScore != null">
+<span>
+<div class="account-menu__info" ng-if="::!themeCtrl.hideTotalScores && vleController.maxScore != null">
+    <md-divider></md-divider>
     <div class="account-menu__score" layout="row" layout-align="start center">
         <div layout="column">
             <span class="md-body-2" translate="accountMenuTotalScore"></span>
@@ -36,12 +38,12 @@
             <md-icon class="md-36"> grade </md-icon>
             <div class="account-menu__grade__overlay" ng-if="vleController.maxScore > 0" style="height: {{(1-vleController.totalScore/vleController.maxScore)*100 | number : 2}}%;"></div>
         </div>
-        <h3 class="accent-2" ng-if="vleController.maxScore > 0">{{vleController.totalScore/vleController.maxScore*100 | number : 0}}%</h3>
+        <h3 class="accent-1" ng-if="vleController.maxScore > 0">{{vleController.totalScore/vleController.maxScore*100 | number : 0}}%</h3>
     </div>
 </div>
 <md-divider></md-divider>
 <div class="account-menu__actions" layout="row">
-    <md-button class="md-primary" ng-click="vleController.goHome()" aria-label="{{'goHome' | translate}}"><span translate="goHome" /></md-button>
+    <md-button id="goHomeButton" class="md-primary" ng-click="vleController.goHome()" aria-label="{{::'GO_HOME' | translate}}">{{::'GO_HOME' | translate}}</md-button>
     <span flex></span>
-    <md-button class="md-primary" ng-click="vleController.logOut()" aria-label="{{'signOut' | translate}}"><span translate="signOut" /></md-button>
+    <md-button id="signOutButton" class="md-primary" ng-click="vleController.logOut('logOutButtonClicked')" aria-label="{{::'SIGN_OUT' | translate}}">{{::'SIGN_OUT' | translate}}</md-button>
 </div>

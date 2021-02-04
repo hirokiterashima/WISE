@@ -22,100 +22,87 @@
  */
 package org.wise.portal.presentation.web.controllers.admin;
 
-import java.util.Calendar;
-import java.util.HashMap;
+import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.verify;
+import static org.junit.Assert.assertEquals;
 
-import javax.servlet.http.HttpSession;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.easymock.EasyMock;
-import org.junit.After;
-import org.junit.Before;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockHttpSession;
-import org.springframework.test.web.AbstractModelAndViewTests;
-import org.springframework.web.servlet.ModelAndView;
-import org.wise.portal.domain.authentication.Schoollevel;
-import org.wise.portal.domain.authentication.impl.TeacherUserDetails;
-import org.wise.portal.domain.user.User;
-import org.wise.portal.domain.user.impl.UserImpl;
-import org.wise.portal.service.user.UserService;
+import org.easymock.EasyMockRunner;
+import org.easymock.Mock;
+import org.easymock.TestSubject;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.ui.ModelMap;
+import org.wise.portal.domain.run.Run;
+import org.wise.portal.domain.run.impl.RunImpl;
+import org.wise.portal.presentation.web.controllers.APIControllerTest;
+import org.wise.portal.service.student.StudentService;
 
 /**
  * @author patrick lawler
- *
  */
-public class UserInfoControllerTest extends AbstractModelAndViewTests{
+@RunWith(EasyMockRunner.class)
+public class UserInfoControllerTest extends APIControllerTest {
 
-	private MockHttpServletRequest request;
+  @TestSubject
+  private UserInfoController controller = new UserInfoController();
 
-	private MockHttpServletResponse response;
-	
-	private UserService mockUserService;
-	
-	private UserInfoController controller;
-	
-	private User user;
-	
-	private TeacherUserDetails userDetails;
-	
-	private HashMap<String, Object> info;
-	
-	/**
-	 * @see junit.framework.TestCase#setUp()
-	 */
-	@Before
-	public void setUp() throws Exception {
-		super.setUp();
-		this.request = new MockHttpServletRequest();
-		this.response = new MockHttpServletResponse();
-		HttpSession mockSession = new MockHttpSession();
-		this.user = new UserImpl();
-		this.userDetails = new TeacherUserDetails();
-		this.userDetails.setCity("Berkeley");
-		this.userDetails.setCountry("USA");
-		String[] subjects = {"physics", "astronomy"};
-		this.userDetails.setCurriculumsubjects(subjects);
-		this.userDetails.setDisplayname("Mr. Mister");
-		this.userDetails.setEmailAddress("mr@here.com");
-		this.userDetails.setFirstname("John");
-		this.userDetails.setLastLoginTime(Calendar.getInstance().getTime());
-		this.userDetails.setLastname("Smith");
-		this.userDetails.setNumberOfLogins(5);
-		this.userDetails.setSchoollevel(Schoollevel.HIGH_SCHOOL);
-		this.userDetails.setSchoolname("Berkeley");
-		this.userDetails.setSignupdate(Calendar.getInstance().getTime());
-		this.userDetails.setState("CA");
-		this.userDetails.setUsername("JohnSmith");
+  @Mock
+  private StudentService studentService;
 
-		this.user.setUserDetails(this.userDetails);
-		
-		request.setParameter("userName", "JohnSmith");
-		this.request.setSession(mockSession);
-		this.mockUserService = EasyMock.createMock(UserService.class);
-		
-		this.controller = new UserInfoController();
-		this.controller.setUserService(this.mockUserService);
-		this.info = this.userDetails.getInfo();
-	}
-	
-	@After
-	public void tearDown(){
-		this.info = null;
-		this.mockUserService = null;
-		this.controller = null;
-		this.request = null;
-		this.response = null;
-	}
-	
-	public void testHandleRequestInternal()throws Exception{
-		
-		EasyMock.expect(this.mockUserService.retrieveUserByUsername("JohnSmith")).andReturn(this.user);
-		EasyMock.replay(this.mockUserService);
-		ModelAndView modelAndView = this.controller.handleRequestInternal(request, response);
-		
-		assertModelAttributeValue(modelAndView, this.controller.USER_INFO_MAP, this.info);
-		
-		EasyMock.verify(this.mockUserService);
-	}
+  private ModelMap modelMap = new ModelMap();
+
+  @SuppressWarnings("unchecked")
+  @Test
+  public void getUserAccountInfo_TeacherOfStudent_ReturnStudentAccountInfoPage() throws Exception {
+    expect(userService.retrieveUserByUsername(TEACHER_USERNAME)).andReturn(teacher1);
+    expect(userService.retrieveUserByUsername(STUDENT_USERNAME)).andReturn(student1);
+    replay(userService);
+    expect(studentService.isStudentAssociatedWithTeacher(student1, teacher1)).andReturn(true);
+    replay(studentService);
+    List<Run> studentRuns = new ArrayList<>();
+    studentRuns.add(new RunImpl());
+    expect(runService.getRunList(student1)).andReturn(studentRuns);
+    replay(runService);
+    String view = controller.getUserAccountInfo(teacherAuth, STUDENT_USERNAME, modelMap);
+    assertEquals("student/account/info", view);
+    assertEquals(true, modelMap.get("isStudent"));
+    List<Run> resultRunList = (List<Run>) modelMap.get("runList");
+    assertEquals(1, resultRunList.size());
+    verify(userService);
+    verify(studentService);
+    verify(runService);
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  public void getUserAccountInfo_AdminLooksUpTeacher_ReturnTeacherAccountInfoPage() throws Exception {
+    expect(userService.retrieveUserByUsername(ADMIN_USERNAME)).andReturn(admin1);
+    expect(userService.retrieveUserByUsername(TEACHER_USERNAME)).andReturn(teacher1);
+    replay(userService);
+    List<Run> studentRuns = new ArrayList<>();
+    studentRuns.add(new RunImpl());
+    expect(runService.getRunListByOwner(teacher1)).andReturn(studentRuns);
+    replay(runService);
+    String view = controller.getUserAccountInfo(adminAuth, TEACHER_USERNAME, modelMap);
+    assertEquals("teacher/account/info", view);
+    assertEquals(false, modelMap.get("isStudent"));
+    List<Run> resultRunList = (List<Run>) modelMap.get("runList");
+    assertEquals(1, resultRunList.size());
+    verify(userService);
+    verify(runService);
+  }
+
+  @Test
+  public void getUserAccountInfo_UserWithoutPermissions_ReturnAccessDeniedPage() throws Exception {
+    expect(userService.retrieveUserByUsername(STUDENT_USERNAME)).andReturn(student1);
+    expect(userService.retrieveUserByUsername(TEACHER_USERNAME)).andReturn(teacher1);
+    replay(userService);
+    String view = controller.getUserAccountInfo(studentAuth, TEACHER_USERNAME, modelMap);
+    assertEquals("errors/accessdenied", view);
+    verify(userService);
+  }
 }

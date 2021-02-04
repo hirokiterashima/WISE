@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2008-2015 Regents of the University of California (Regents).
+ * Copyright (c) 2008-2017 Regents of the University of California (Regents).
  * Created by WISE, Graduate School of Education, University of California, Berkeley.
  *
  * This software is distributed under the GNU General Public License, v3,
@@ -23,14 +23,13 @@
  */
 package org.wise.portal.dao.work;
 
+import java.util.List;
+
 import org.wise.portal.dao.SimpleDao;
 import org.wise.portal.domain.group.Group;
 import org.wise.portal.domain.run.Run;
-import org.wise.portal.domain.workgroup.WISEWorkgroup;
+import org.wise.portal.domain.workgroup.Workgroup;
 import org.wise.vle.domain.work.StudentAsset;
-import org.wise.vle.domain.work.StudentWork;
-
-import java.util.List;
 
 /**
  * Domain Access Object for StudentAsset
@@ -38,8 +37,7 @@ import java.util.List;
  */
 public interface StudentAssetDao<T extends StudentAsset> extends SimpleDao<T> {
 
-    List<StudentWork> getStudentAssetListByParams(
-            Integer id, Run run, Group period, WISEWorkgroup workgroup,
-            String nodeId, String componentId, String componentType,
-            Boolean isAutoSave);
+  List<StudentAsset> getStudentAssetListByParams(Integer id, Run run, Group period,
+      Workgroup workgroup, String nodeId, String componentId, String componentType,
+      Boolean isAutoSave);
 }

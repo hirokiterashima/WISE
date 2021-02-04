@@ -26,12 +26,14 @@
 @import "modules/alerts",
         "modules/dragula",
         "modules/dialog",
+        "modules/help",
         "modules/inputs",
         "modules/table",
         "modules/toolbar",
         "modules/list",
         "modules/nav",
         "modules/menu",
+        "modules/notice",
         "modules/node",
         "modules/notebook",
         "modules/notifications",
@@ -42,4 +44,6 @@
         "modules/component--embedded",
         "modules/component--graph",
         "modules/component--match",
-        "modules/notebook-toolbar";
+        "modules/component--outside",
+        "modules/notebook-toolbar",
+        "modules/highcharts";

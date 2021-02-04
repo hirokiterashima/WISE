@@ -1,48 +1,107 @@
 'use strict';
 
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
+class WiselinkController {
+  constructor($scope,
+              StudentDataService,
+              $timeout) {
+    this.$scope = $scope;
+    this.StudentDataService = StudentDataService;
+    this.$timeout = $timeout;
+    this.template;
+    this.$scope.$on('$destroy', () => {
+      this.ngOnDestroy();
+    });
+  }
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+  ngOnDestroy() {
+    this.unsubscribeAll();
+  }
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var WiselinkController = function () {
-    function WiselinkController($scope, $element, StudentDataService) {
-        _classCallCheck(this, WiselinkController);
-
-        this.StudentDataService = StudentDataService;
+  unsubscribeAll() {
+    if (this.currentNodeChangedSubscription != null) {
+      this.currentNodeChangedSubscription.unsubscribe();
     }
+  }
 
-    _createClass(WiselinkController, [{
-        key: 'follow',
-        value: function follow() {
-            this.StudentDataService.endCurrentNodeAndSetCurrentNodeByNodeId(this.nodeId);
-        }
-    }]);
+  $onInit() {
+    if (this.type === 'button') {
+      this.template = 'button';
+    } else {
+      if (this.disable) {
+        this.template = 'text';
+      } else {
+        this.template = 'link';
+      }
+    }
+  }
 
-    return WiselinkController;
-}();
+  scrollAndHighlightComponent() {
+    this.$timeout(() => {
+      const componentElement = $("#" + this.componentId);
+      const originalBg = componentElement.css("backgroundColor");  // save the original background image
+      componentElement.css("background-color", "#FFFF9C");  // highlight the background briefly to draw attention to it
 
-WiselinkController.$inject = ['$scope', '$element', 'StudentDataService'];
+      // scroll to the component
+      $('#content').animate({
+        scrollTop: componentElement.prop("offsetTop")
+      }, 1000);
+
+      // slowly fade back to original background color
+      componentElement.css({
+        transition: 'background-color 3s ease-in-out',
+        "background-color": originalBg
+      });
+
+      // we need this to remove the transition animation so the highlight works again next time
+      this.$timeout(() => {
+        componentElement.css("transition", "");
+      }, 4000);
+    }, 500);
+  }
+
+  follow() {
+    const currentNode = this.StudentDataService.getCurrentNode();
+    if (this.isLinkToComponentInStep(currentNode)) {
+      this.scrollAndHighlightComponent();
+    } else {
+      this.goToNode(currentNode);
+    }
+  }
+
+  isLinkToComponentInStep(currentNode) {
+    return currentNode != null && currentNode.id === this.nodeId && this.componentId != null;
+  }
+
+  goToNode(currentNode) {
+    this.currentNodeChangedSubscription = this.StudentDataService.currentNodeChanged$
+        .subscribe(() => {
+      if (this.componentId != null && currentNode != null && currentNode.id === this.nodeId) {
+        this.scrollAndHighlightComponent();
+      }
+    });
+    this.StudentDataService.endCurrentNodeAndSetCurrentNodeByNodeId(this.nodeId);
+  }
+}
+
+WiselinkController.$inject = ['$scope', 'StudentDataService', '$timeout'];
 
 /**
  * Creates a link or button that the student can click on to navigate to
  * another step or activity in the project.
  */
-var Wiselink = {
-    bindings: {
-        nodeId: '@',
-        linkText: '@',
-        tooltip: '@',
-        linkClass: '@',
-        type: '@'
-    },
-    templateUrl: 'wise5/directives/wiselink/wiselink.html',
-    controller: WiselinkController,
-    controllerAs: 'wiselinkCtrl'
+const Wiselink = {
+  bindings: {
+    nodeId: '@',
+    componentId: '@',
+    disable: '<',
+    linkText: '@',
+    tooltip: '@',
+    linkClass: '@',
+    type: '@'
+  },
+  templateUrl: 'wise5/directives/wiselink/wiselink.html',
+  controller: WiselinkController,
+  controllerAs: 'wiselinkCtrl'
 };
 
-exports.default = Wiselink;
-//# sourceMappingURL=wiselink.js.map
+export default Wiselink;

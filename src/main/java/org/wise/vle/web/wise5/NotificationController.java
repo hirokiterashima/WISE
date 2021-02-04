@@ -1,233 +1,161 @@
 package org.wise.vle.web.wise5;
 
-import org.json.JSONArray;
+import java.io.IOException;
+import java.nio.file.AccessDeniedException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.acls.domain.BasePermission;
-import org.springframework.stereotype.Controller;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.socket.WebSocketHandler;
+import org.springframework.web.bind.annotation.RestController;
 import org.wise.portal.dao.ObjectNotFoundException;
 import org.wise.portal.domain.authentication.impl.StudentUserDetails;
 import org.wise.portal.domain.run.Run;
 import org.wise.portal.domain.user.User;
 import org.wise.portal.domain.workgroup.Workgroup;
-import org.wise.portal.presentation.web.controllers.ControllerUtil;
-import org.wise.portal.service.offering.RunService;
+import org.wise.portal.service.notification.NotificationService;
+import org.wise.portal.service.run.RunService;
+import org.wise.portal.service.user.UserService;
 import org.wise.portal.service.vle.wise5.VLEService;
-import org.wise.portal.service.websocket.WISEWebSocketHandler;
 import org.wise.portal.service.workgroup.WorkgroupService;
+import org.wise.portal.spring.data.redis.MessagePublisher;
 import org.wise.vle.domain.notification.Notification;
 
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Controller for handling GET and POST of WISE5 Notifications
+ * WISE Notification API
  * @author Hiroki Terashima
  */
-@Controller
+@RestController
 public class NotificationController {
 
-    @Autowired
-    private VLEService vleService;
+  @Autowired
+  private VLEService vleService;
 
-    @Autowired
-    private RunService runService;
+  @Autowired
+  private RunService runService;
 
-    @Autowired
-    private WebSocketHandler webSocketHandler;
+  @Autowired
+  private UserService userService;
 
-    @Autowired
-    private WorkgroupService workgroupService;
+  @Autowired
+  private WorkgroupService workgroupService;
 
-    @RequestMapping(method = RequestMethod.GET, value = "/notification/{runId}")
-    protected void getNotifications(
-            @PathVariable Integer runId,
-            @RequestParam(value = "id", required = false) Integer id,
-            @RequestParam(value = "periodId", required = false) Integer periodId,
-            @RequestParam(value = "toWorkgroupId", required = false) Integer toWorkgroupId,
-            @RequestParam(value = "groupId", required = false) String groupId,
-            @RequestParam(value = "nodeId", required = false) String nodeId,
-            @RequestParam(value = "componentId", required = false) String componentId,
-            HttpServletResponse response) throws IOException {
+  @Autowired
+  private NotificationService notificationService;
 
-        User signedInUser = ControllerUtil.getSignedInUser();
-        try {
-            Run run = runService.retrieveById(new Long(runId));
-            if (toWorkgroupId != null) {
-                Workgroup workgroup = workgroupService.retrieveById(new Long(toWorkgroupId));
-                if (signedInUser.getUserDetails() instanceof StudentUserDetails &&
-                        (!run.isStudentAssociatedToThisRun(signedInUser) || !workgroup.getMembers().contains(signedInUser))
-                        ) {
-                    // user is student and is not in this run or not in the specified workgroup, so deny access
-                    return;
-                }
-            } else if (!signedInUser.isAdmin() && !runService.hasRunPermission(run, signedInUser, BasePermission.READ)) {
-                // verify that user is the owner of the run
-                return;
-            }
-            // otherwise, we can perform the query
-            List<Notification> notificationList = vleService.getNotifications(
-                    id, runId, periodId, toWorkgroupId, groupId, nodeId, componentId);
-            JSONArray notifications = new JSONArray();
-            for (Notification notification : notificationList) {
-                notifications.put(notification.toJSON());
-            }
-            response.getWriter().write(notifications.toString());
-        } catch (ObjectNotFoundException e) {
-            e.printStackTrace();
-            return;
-        }
+  @Autowired
+  private MessagePublisher redisPublisher;
+
+  public void broadcastNotification(Notification notification) throws JSONException {
+    notification.convertToClientNotification();
+    JSONObject message = new JSONObject();
+    message.put("type", "notification");
+    message.put("topic", String.format("/topic/workgroup/%s", notification.getToWorkgroupId()));
+    message.put("notification", notification.toJSON());
+    redisPublisher.publish(message.toString());
+  }
+
+  @GetMapping("/notification/{runId}")
+  protected List<Notification> getNotifications(
+      Authentication auth,
+      @PathVariable Long runId,
+      @RequestParam(value = "id", required = false) Integer id,
+      @RequestParam(value = "periodId", required = false) Integer periodId,
+      @RequestParam(value = "toWorkgroupId", required = false) Long toWorkgroupId,
+      @RequestParam(value = "groupId", required = false) String groupId,
+      @RequestParam(value = "nodeId", required = false) String nodeId,
+      @RequestParam(value = "componentId", required = false) String componentId)
+      throws ObjectNotFoundException {
+    User user = userService.retrieveUserByUsername(auth.getName());
+    Run run = runService.retrieveById(new Long(runId));
+    if (toWorkgroupId != null) {
+      Workgroup workgroup = workgroupService.retrieveById(new Long(toWorkgroupId));
+      if (isStudentAndNotAllowedToSaveNotification(user, run, workgroup)) {
+        return new ArrayList<Notification>();
+      }
+    } else if (!user.isAdmin() && !runService.hasRunPermission(run, user, BasePermission.READ)) {
+      return new ArrayList<Notification>();
     }
+    return vleService.getNotifications(id, runId, periodId,
+        toWorkgroupId, groupId, nodeId, componentId);
+  }
 
-    @RequestMapping(method = RequestMethod.POST, value = "/notification/{runId}")
-    protected void postNotification(
-            @PathVariable Integer runId,
-            @RequestParam(value = "notificationId", required = false) Integer notificationId,
-            @RequestParam(value = "periodId", required = true) Integer periodId,
-            @RequestParam(value = "fromWorkgroupId", required = false) Integer fromWorkgroupId,
-            @RequestParam(value = "toWorkgroupId", required = false) Integer toWorkgroupId,
-            @RequestParam(value = "groupId", required = false) String groupId,
-            @RequestParam(value = "nodeId", required = false) String nodeId,
-            @RequestParam(value = "componentId", required = false) String componentId,
-            @RequestParam(value = "componentType", required = false) String componentType,
-            @RequestParam(value = "type", required = false) String type,
-            @RequestParam(value = "message", required = false) String message,
-            @RequestParam(value = "data", required = false) String data,
-            @RequestParam(value = "timeGenerated", required = true) String timeGenerated,
-            @RequestParam(value = "timeDismissed", required = false) String timeDismissed,
-            HttpServletResponse response) throws IOException {
-
-        User signedInUser = ControllerUtil.getSignedInUser();
-        try {
-            Run run = runService.retrieveById(new Long(runId));
-            if (signedInUser.isAdmin() || runService.hasRunPermission(run, signedInUser, BasePermission.READ)) {
-                // an admin or teacher of the run can make changes to the notification
-            } else if (notificationId != null) {
-                // make sure the person who is updating this notification has permission
-                Notification notification = vleService.getNotificationById(notificationId);
-                if (notification == null || !notification.getToWorkgroup().getMembers().contains(signedInUser)) {
-                    return;
-                }
-            } else if (fromWorkgroupId != null) {
-                Workgroup fromWorkgroup = workgroupService.retrieveById(new Long(fromWorkgroupId));
-                if (signedInUser.getUserDetails() instanceof StudentUserDetails &&
-                        (!run.isStudentAssociatedToThisRun(signedInUser) || !fromWorkgroup.getMembers().contains(signedInUser))
-                        ) {
-                    // user is student and is not in this run or not in the specified workgroup, so deny access
-                    return;
-                }
-            } else if (toWorkgroupId != null) {
-                if (fromWorkgroupId == null) {
-                    // check if type of Notification is allowed to not have fromWorkgroupId
-                    if ("CRaterResult".equals(type)) {
-                        // fromWorkgroupId is not required for CRaterScoreResult notifications
-                    } else {
-                        // if we're specifying a toWorkgroup, we must have a fromWorkgroup
-                        return;
-                    }
-                } else {
-                    Workgroup fromWorkgroup = workgroupService.retrieveById(new Long(fromWorkgroupId));
-                    if (signedInUser.getUserDetails() instanceof StudentUserDetails &&
-                            (!run.isStudentAssociatedToThisRun(signedInUser) || !fromWorkgroup.getMembers().contains(signedInUser))
-                            ) {
-                        // user is student and is not in this run or not in the specified workgroup, so deny access
-                        return;
-                    }
-                }
-            }
-        } catch (ObjectNotFoundException e) {
-            e.printStackTrace();
-            return;
+  @PostMapping("/notification/{runId}")
+  protected Notification saveNotification(@PathVariable Integer runId,
+      @RequestBody Notification notification, Authentication authentication) throws Exception {
+    User user = userService.retrieveUserByUsername(authentication.getName());
+    Run run = runService.retrieveById(new Long(runId));
+    Workgroup fromWorkgroup = notification.getFromWorkgroup();
+    Workgroup toWorkgroup = notification.getToWorkgroup();
+    if (user.isAdmin() || runService.hasRunPermission(run, user, BasePermission.READ)) {
+    } else if (notification.getId() != null) {
+      if (!toWorkgroup.getMembers().contains(user)) {
+        return null;
+      }
+    } else if (fromWorkgroup != null) {
+      if (isStudentAndNotAllowedToSaveNotification(user, run, fromWorkgroup)) {
+        return null;
+      }
+    } else if (toWorkgroup != null) {
+      if (fromWorkgroup == null) {
+        if ("CRaterResult".equals(notification.getType())) {
+        } else {
+          return null;
         }
-
-        Notification notification = vleService.saveNotification(
-                notificationId,
-                runId,
-                periodId,
-                fromWorkgroupId,
-                toWorkgroupId,
-                groupId,
-                nodeId,
-                componentId,
-                componentType,
-                type,
-                message,
-                data,
-                timeGenerated,
-                timeDismissed
-        );
-        response.getWriter().write(notification.toJSON().toString());
+      }
     }
+    Calendar now = Calendar.getInstance();
+    notification.setServerSaveTime(new Timestamp(now.getTimeInMillis()));
+    Notification savedNotification = notificationService.saveNotification(notification);
+    broadcastNotification(savedNotification);
+    return notification;
+  }
 
-    @RequestMapping(method = RequestMethod.POST, value = "/notification/{runId}/dismiss")
-    protected void dismissNotification(
-            @PathVariable Integer runId,
-            @RequestParam(value = "notificationId", required = true) Integer notificationId,
-            @RequestParam(value = "periodId", required = false) Integer periodId,
-            @RequestParam(value = "type", required = true) String type,
-            @RequestParam(value = "fromWorkgroupId", required = false) Integer fromWorkgroupId,
-            @RequestParam(value = "toWorkgroupId", required = false) Integer toWorkgroupId,
-            @RequestParam(value = "groupId", required = false) String groupId,
-            @RequestParam(value = "timeDismissed", required = false) String timeDismissed,
-            HttpServletResponse response) throws IOException {
+  private boolean isStudentAndNotAllowedToSaveNotification(User user, Run run,
+      Workgroup fromWorkgroup) {
+    return user.getUserDetails() instanceof StudentUserDetails &&
+      (!run.isStudentAssociatedToThisRun(user) ||
+        !fromWorkgroup.getMembers().contains(user));
+  }
 
-        User signedInUser = ControllerUtil.getSignedInUser();
-
-        try {
-            Notification notification = vleService.getNotificationById(notificationId);
-            Run run = runService.retrieveById(new Long(runId));
-            // check for permission to edit this notification
-            if (signedInUser.isAdmin() || runService.hasRunPermission(run, signedInUser, BasePermission.READ) ||
-                    !notification.getToWorkgroup().getMembers().contains(signedInUser)) {
-                // an admin or teacher, or user who this notification is for can make changes to the notification
-            }
-            notification = vleService.dismissNotification(notification, timeDismissed);
-            if (groupId != null && "CRaterResult".equals(type)) {
-                // if this notification belong to a group of notifications, also dismiss other notifications in the group
-                List<Notification> notificationsInGroup = vleService.getNotificationsByGroupId(groupId);
-                for (Notification notificationInGroup : notificationsInGroup) {
-                    if (notificationInGroup.getId().equals(notification.getId())) {
-                        // ignore the notification that was dimissed above.
-                        continue;
-                    }
-                    vleService.dismissNotification(notificationInGroup, timeDismissed);
-                    try {
-                        if (webSocketHandler != null) {
-                            WISEWebSocketHandler wiseWebSocketHandler = (WISEWebSocketHandler) webSocketHandler;
-
-                            if (wiseWebSocketHandler != null) {
-                                // send this message to websocket
-                                String messageParticipants = "";
-                                if (notificationInGroup.getToWorkgroup().isTeacherWorkgroup()) {
-                                    messageParticipants = "studentToTeachers";
-                                } else {
-                                    messageParticipants = "teacherToStudentsInRun";
-                                }
-                                JSONObject notificationJSON = notificationInGroup.toJSON();
-                                JSONObject webSocketMessageJSON = new JSONObject();
-                                webSocketMessageJSON.put("messageType", "notification");
-                                webSocketMessageJSON.put("messageParticipants", messageParticipants);
-                                webSocketMessageJSON.put("toWorkgroupId", notificationInGroup.getToWorkgroup().getId());
-                                webSocketMessageJSON.put("data", notificationJSON);
-                                wiseWebSocketHandler.handleMessage(signedInUser, webSocketMessageJSON.toString());
-                            }
-                        }
-                    } catch (Exception e) {
-                        // ignore errors that occur during sending notification over websocket.
-                    }
-                }
-            }
-            response.getWriter().write(notification.toJSON().toString());
-        } catch (ObjectNotFoundException e) {
-            e.printStackTrace();
-            return;
+  @PostMapping("/notification/{runId}/dismiss")
+  protected Notification dismissNotification(@PathVariable Integer runId,
+      @RequestBody Notification notification, Authentication authentication)
+      throws IOException, ObjectNotFoundException, JSONException {
+    User user = userService.retrieveUserByUsername(authentication.getName());
+    Run run = runService.retrieveById(new Long(runId));
+    if (canDismissNotification(user, notification, run)) {
+      Timestamp timeDismissed = notification.getTimeDismissed();
+      notification = vleService.dismissNotification(notification, timeDismissed);
+      if ("CRaterResult".equals(notification.getType())) {
+        String groupId = notification.getGroupId();
+        List<Notification> notificationsInGroup = vleService.getNotificationsByGroupId(groupId);
+        for (Notification notificationInGroup : notificationsInGroup) {
+          if (notificationInGroup.getId().equals(notification.getId())) {
+            continue;
+          }
+          vleService.dismissNotification(notificationInGroup, timeDismissed);
+          broadcastNotification(notificationInGroup);
         }
+      }
+      return notification;
     }
+    throw new AccessDeniedException("Access denied for notification");
+  }
+
+  private boolean canDismissNotification(User user, Notification notification, Run run) {
+    return user.isAdmin() ||
+        runService.hasRunPermission(run, user, BasePermission.READ) ||
+        notification.getToWorkgroup().getMembers().contains(user);
+  }
 }

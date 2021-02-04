@@ -1,9 +1,9 @@
 /**
- * Copyright (c) 2007-2015 Encore Research Group, University of Toronto
+ * Copyright (c) 2007-2017 Encore Research Group, University of Toronto
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -25,20 +25,19 @@ import org.wise.portal.domain.Persistable;
 /**
  * Represents the Java classname of an object that will be authorized according
  * to an access control list (ACL).
- * 
+ *
  * @author Cynick Young
  */
 public interface MutableAclTargetObject extends Persistable {
 
-    /**
-     * @return the classname
-     */
-    String getClassname();
+  /**
+   * @return the classname
+   */
+  String getClassname();
 
-    /**
-     * @param classname
-     *                the classname to set
-     */
-    void setClassname(String classname);
+  /**
+   * @param classname the classname to set
+   */
+  void setClassname(String classname);
 
 }

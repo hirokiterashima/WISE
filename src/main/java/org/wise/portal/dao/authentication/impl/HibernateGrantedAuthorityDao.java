@@ -3,7 +3,7 @@
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -20,7 +20,15 @@
  */
 package org.wise.portal.dao.authentication.impl;
 
-import org.springframework.dao.support.DataAccessUtils;
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
+
+import org.hibernate.Session;
 import org.springframework.stereotype.Repository;
 import org.wise.portal.dao.authentication.GrantedAuthorityDao;
 import org.wise.portal.dao.impl.AbstractHibernateDao;
@@ -30,52 +38,41 @@ import org.wise.portal.domain.authentication.impl.PersistentGrantedAuthority;
 /**
  * Class that implements the <code>GrantedAuthorityDao</code> interface using
  * Hibernate.
- * 
+ *
  * @author Cynick Young
  */
 @Repository
 public class HibernateGrantedAuthorityDao extends
-        AbstractHibernateDao<MutableGrantedAuthority> implements
-        GrantedAuthorityDao<MutableGrantedAuthority> {
+    AbstractHibernateDao<MutableGrantedAuthority> implements
+    GrantedAuthorityDao<MutableGrantedAuthority> {
 
-    private static final String FIND_ALL_QUERY = "from PersistentGrantedAuthority";
+  @PersistenceContext
+  private EntityManager entityManager;
 
-    /**
-     * Retrieve the granted authority by name. Returns null if the specified
-     * authority name is not found.
-     * 
-     * @see org.wise.portal.dao.authentication.GrantedAuthorityDao#retrieveByName(java.lang.String)
-     */
-    public MutableGrantedAuthority retrieveByName(String authority) {
-        return (MutableGrantedAuthority) DataAccessUtils
-                .uniqueResult(this
-                        .getHibernateTemplate()
-                        .findByNamedParam(
-                                "from PersistentGrantedAuthority as granted_authority where granted_authority.authority = :authority",
-                                new String[] { "authority" },
-                                new Object[] { authority }));
-    }
+  private static final String FIND_ALL_QUERY = "from PersistentGrantedAuthority";
 
-    /**
-     * @see org.wise.portal.dao.authentication.GrantedAuthorityDao#hasRole(java.lang.String)
-     */
-    public boolean hasRole(String authority) {
-        return (this.retrieveByName(authority) != null);
-    }
+  public MutableGrantedAuthority retrieveByName(String authority) {
+    Session session = this.getHibernateTemplate().getSessionFactory().getCurrentSession();
+    CriteriaBuilder cb = session.getCriteriaBuilder();
+    CriteriaQuery<PersistentGrantedAuthority> cq = cb.createQuery(PersistentGrantedAuthority.class);
+    Root<PersistentGrantedAuthority> persistentGrantedAuthorityRoot = 
+        cq.from(PersistentGrantedAuthority.class);
+    cq.select(persistentGrantedAuthorityRoot).where(
+        cb.equal(persistentGrantedAuthorityRoot.get("authority"), authority));
+    TypedQuery<PersistentGrantedAuthority> query = entityManager.createQuery(cq);
+    return query.getResultStream().findFirst().orElse(null);
+  }
 
-    /**
-     * @see org.wise.portal.dao.impl.AbstractHibernateDao#getFindAllQuery()
-     */
-    @Override
-    protected String getFindAllQuery() {
-        return FIND_ALL_QUERY;
-    }
+  public boolean hasRole(String authority) {
+    return (this.retrieveByName(authority) != null);
+  }
+  @Override
+  protected String getFindAllQuery() {
+    return FIND_ALL_QUERY;
+  }
 
-	/**
-	 * @see org.wise.portal.dao.impl.AbstractHibernateDao#getDataObjectClass()
-	 */
-	@Override
-	protected Class<PersistentGrantedAuthority> getDataObjectClass() {
-		return PersistentGrantedAuthority.class;
-	}
+  @Override
+  protected Class<PersistentGrantedAuthority> getDataObjectClass() {
+    return PersistentGrantedAuthority.class;
+  }
 }

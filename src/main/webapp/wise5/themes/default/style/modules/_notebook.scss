@@ -4,7 +4,9 @@ $notebook-sidebar-width: 56px;
 // Base
 .notebook-launcher {
     @media only screen and (min-width: $layout-breakpoint-xs) {
-        z-index: 61;
+        &.md-button.md-fab {
+            z-index: 61;
+        }
     }
 }
 
@@ -326,10 +328,10 @@ $notebook-sidebar-width: 56px;
 .notebook-item__info {
     font-style: italic;
     opacity: .8;
-    color: lighten(color('accent-2'), 5%);
+    color: lighten(color('accent-1'), 5%);
 
     a, md-icon {
-        color: lighten(color('accent-2'), 5%);
+        color: lighten(color('accent-1'), 5%);
     }
 
     md-icon {
@@ -355,12 +357,12 @@ $notebook-sidebar-width: 56px;
     }
 
     &:hover, &:focus, &.dragover {
-        border-color: color('accent-1');
-        background-color: lighten(color('accent-1'), 35%);
-        color: color('accent-1');
+        border-color: color('accent');
+        background-color: lighten(color('accent'), 35%);
+        color: color('accent');
 
         md-icon, span {
-            color: color('accent-1');
+            color: color('accent');
         }
     }
 }
@@ -475,10 +477,19 @@ $notebook-sidebar-width: 56px;
     }
 }
 
+.notebook-items--grading {
+    margin-bottom: 0;
+}
+
 @media only screen and (max-width: ($layout-breakpoint-xs - 1)) {
     .notebook-enabled {
         .md-fab-bottom-right, .md-fab-bottom-left {
             bottom: ($wise-toolbar-height + 8) !important;
         }
     }
+}
+
+.notebook-grading {
+    background-color: #ffffff;
+    display: block;
 }

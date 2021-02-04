@@ -1,9 +1,9 @@
 /**
- * Copyright (c) 2007-2016 Encore Research Group, University of Toronto
+ * Copyright (c) 2007-2017 Encore Research Group, University of Toronto
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -27,6 +27,8 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.EnumSet;
+
 import org.hibernate.tool.hbm2ddl.SchemaExport;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -41,66 +43,69 @@ import org.wise.portal.spring.SpringConfiguration;
  * @author Hiroki Terashima
  */
 public class DBInitExporter {
-	
-	static String springConfigClassname = "org.wise.portal.spring.impl.SpringConfigurationImpl";
-	static String outputFilename = "src/main/resources/wise_db_init.sql";
 
-    public static void main(String[] args) {
-        try {
-            exportSchemaToFile(springConfigClassname, outputFilename);
-        } catch (Exception all) {
-            System.err.println(all.getLocalizedMessage());
-            all.printStackTrace(System.out);
-            System.exit(2);
-        }
+  static String springConfigClassname = "org.wise.portal.spring.impl.SpringConfigurationImpl";
+  static String outputFilename = "src/main/resources/wise_db_init.sql";
+
+  public static void main(String[] args) {
+    try {
+      exportSchemaToFile(springConfigClassname, outputFilename);
+    } catch (Exception all) {
+      System.err.println(all.getLocalizedMessage());
+      all.printStackTrace(System.out);
+      System.exit(2);
     }
+  }
 
-    /**
-     * Exports schema definitions to the specified outputFilename.
-     * @param springConfigClassname Spring configuration file
-     * @param outputFilename output file
-     */
-    public static void exportSchemaToFile(String springConfigClassname,
-            String outputFilename) throws ClassNotFoundException,
-            IOException {
-        ConfigurableApplicationContext applicationContext = null;
-        try {
-            SpringConfiguration springConfig = (SpringConfiguration) BeanUtils
-                    .instantiateClass(Class.forName(springConfigClassname));
-            applicationContext = new ClassPathXmlApplicationContext(
-                    springConfig.getRootApplicationContextConfigLocations());
+  /**
+   * Exports schema definitions to the specified outputFilename.
+   * @param springConfigClassname Spring configuration file
+   * @param outputFilename output file
+   */
+  public static void exportSchemaToFile(String springConfigClassname, String outputFilename)
+      throws ClassNotFoundException, IOException {
+    ConfigurableApplicationContext applicationContext = null;
+    try {
+      SpringConfiguration springConfig =
+          (SpringConfiguration) BeanUtils.instantiateClass(Class.forName(springConfigClassname));
+      applicationContext = new ClassPathXmlApplicationContext(
+          springConfig.getRootApplicationContextConfigLocations());
 
-            final boolean printScriptToConsole = false, exportScriptToDb = false, justDrop = false, justCreate = true;
-            final SchemaExport schemaExport = new SchemaExport(MetadataProvider.getMetadata());
-            schemaExport
-                    .setDelimiter(";").setFormat(true).setHaltOnError(true)
-                    .setOutputFile(outputFilename);
-            schemaExport.execute(printScriptToConsole, exportScriptToDb,
-                    justDrop, justCreate);
+      final boolean printScriptToConsole = false, exportScriptToDb = false,
+          justDrop = false, justCreate = true;
 
-            // now append initial data, which we read in from import.sql
-            File initialDataFile = new File("src/main/resources/import.sql");
-    		FileInputStream initialDataFileInputStream = new FileInputStream(initialDataFile);
-    		BufferedReader initialDataFileReader = new BufferedReader(new InputStreamReader(initialDataFileInputStream));
-    		
-    		boolean doAppend = true;
-            BufferedWriter outputFileWriter = new BufferedWriter(new FileWriter(outputFilename, doAppend));
-            
-    		String aLine;
-    		while ((aLine = initialDataFileReader.readLine()) != null) {
-    			// Process each line and add append to output file, unless it's a hsqldb-specific line
-    			if (!aLine.contains("SET DATABASE REFERENTIAL INTEGRITY")) {
-    				outputFileWriter.write(aLine);
-    				outputFileWriter.newLine();
-    			}
-    		}
+      /*
+      final SchemaExport schemaExport = new SchemaExport();
+      schemaExport
+          .setDelimiter(";").setFormat(true).setHaltOnError(true)
+          .setOutputFile(outputFilename);
+      schemaExport.execute(EnumSet.of(TargetType.STDOUT, TargetType.SCRIPT),
+          SchemaExport.Action.BOTH, MetadataProvider.getMetadata());
+          */
 
-    		initialDataFileReader.close(); // close the buffer reader
-    		outputFileWriter.close();    // close buffer writer
-        } finally {
-            if (applicationContext != null) {
-                applicationContext.close();
-            }
+      // now append initial data, which we read in from import.sql
+      File initialDataFile = new File("src/main/resources/import.sql");
+      FileInputStream initialDataFileInputStream = new FileInputStream(initialDataFile);
+      BufferedReader initialDataFileReader =
+          new BufferedReader(new InputStreamReader(initialDataFileInputStream));
+
+      boolean doAppend = true;
+      BufferedWriter outputFileWriter = new BufferedWriter(new FileWriter(outputFilename, doAppend));
+
+      String aLine;
+      while ((aLine = initialDataFileReader.readLine()) != null) {
+        // Process each line and add append to output file, unless it's a hsqldb-specific line
+        if (!aLine.contains("SET DATABASE REFERENTIAL INTEGRITY")) {
+          outputFileWriter.write(aLine);
+          outputFileWriter.newLine();
         }
+      }
+      initialDataFileReader.close();
+      outputFileWriter.close();
+    } finally {
+      if (applicationContext != null) {
+        applicationContext.close();
+      }
     }
+  }
 }

@@ -8,20 +8,36 @@
 
 <link href="${contextPath}/<spring:theme code="globalstyles"/>" media="screen" rel="stylesheet"  type="text/css" />
 <link href="${contextPath}/<spring:theme code="stylesheet"/>" media="screen" rel="stylesheet"  type="text/css" />
-<link href="${contextPath}/<spring:theme code="teachergrading.css"/>" media="screen" rel="stylesheet" type="text/css" />
-<link href="${contextPath}/<spring:theme code="jquerystylesheet"/>" media="screen" rel="stylesheet" type="text/css" /> 
+<link href="${contextPath}/wise5/classroomMonitor/manageStudents/teachergrading.css" media="screen" rel="stylesheet" type="text/css" />
+<link href="${contextPath}/<spring:theme code="jquerystylesheet"/>" media="screen" rel="stylesheet" type="text/css" />
+<c:if test="${textDirection == 'rtl' }">
+		<link href="${contextPath}/<spring:theme code="rtlstylesheet"/>" rel="stylesheet" type="text/css" >
+</c:if>
 
+<style media="screen">
+	#periodSelect #periodTabs {
+		float:left;
+	}
+	[dir=rtl] #periodSelect #periodTabs {
+		float:right;
+	}
+	.link-save {
+		float:right;
+	}
+	[dir=rtl] .link-save {
+		float:left;
+	}
+</style>
 <head>
 <script type="text/javascript" src="${contextPath}/<spring:theme code="jquerysource"/>"></script>
 <script type="text/javascript" src="${contextPath}/<spring:theme code="jqueryuisource"/>"></script>
-<script type="text/javascript" src="${contextPath}/<spring:theme code="generalsource"/>"></script>
 
 <!-- TODO: move to js file once js i18n is implemented for portal -->
 <script type="text/javascript">
 
 $(document).ready(function(){
 	$(document).height('100%');
-	
+
 	$('#loading').dialog({
 		autoOpen:false,
 		width:300,
@@ -32,41 +48,41 @@ $(document).ready(function(){
 		closeText:'',
 		dialogClass:'no-title'
 	});
-	
+
 	// setup tabs
 	$( "#periodTabs" ).tabs({
 		active: ${tabIndex},
 		create: function(event, ui) { setTimeout(function(){setGradingContentHeight();},1000); }
 	});
-	
+
 	if (${workgroupsWithoutPeriod != ""}) {
 		alert('<spring:escapeBody javaScriptEscape="true"><spring:message code="teacher.management.viewmystudents.unassignedWorkgroups"/></spring:escapeBody> ${workgroupsWithoutPeriod}');
 	}
-	
+
 	$(window).resize(function(){
 		setGradingContentHeight();
 	});
-	
+
 	$('#periodTabs').click(function(){
 		setGradingContentHeight();
 	});
-	
+
 	// set sortable items
 	setSortable();
-	
+
 	// bind save button click to post workgroup changes
 	$('#saveButton').click(function(){
 		if(!$(this).hasClass('disabled')){
-			var selectedTab = $('#periodTabs').tabs("option", "active"); 
+			var selectedTab = $('#periodTabs').tabs("option", "active");
 			postChanges(selectedTab);
 		}
 	});
-	
+
 	// setup student info dialog
 	$('.studentInfo').on('click',function(){
 		var title = $(this).attr('title');
 		var username = $(this).attr('id').replace('studentInfo_','');
-		var path = "${contextPath}/student/account/info?userName=" + username;
+		var path = "${contextPath}/student/account/info?username=" + username;
 		var dialog = $('<div id="studentInfoDialog" style="overflow-y:hidden;"></div>');
 		var div = dialog.html('<iframe id="studentInfoIfrm" width="100%" height="100%"></iframe>');
 		div.dialog({
@@ -77,17 +93,17 @@ $(document).ready(function(){
 			position: 'center',
 			close: function(){ $(this).remove(); },
 			buttons: {
-				Close: function(){$(this).dialog('close');}
+				'<spring:message code="close" />': function(){$(this).dialog('close');}
 			}
 		});
 		$("#studentInfoDialog > #studentInfoIfrm").attr('src',path);
 	});
-	
+
 	// setup change password dialog
 	$('.changePassword').on('click',function(){
 		var title = $(this).attr('title');
 		var username = $(this).attr('id').replace('changePassword_','');
-		var path = "changestudentpassword.html?userName=" + username;
+		var path = "changestudentpassword?username=" + username;
 		var dialog = $('<div id="studentPasswordDialog" style="overflow-y:hidden;"></div>');
 		var div = dialog.html('<iframe id="studentPasswordIfrm" width="100%" height="100%"></iframe>');
 		div.dialog({
@@ -98,23 +114,22 @@ $(document).ready(function(){
 			position: 'center',
 			close: function(){ $(this).remove(); },
 			buttons: {
-				Close: function(){$(this).dialog('close');}
+				'<spring:message code="close" />': function(){$(this).dialog('close');}
 			}
 		});
 		$("#studentPasswordDialog > #studentPasswordIfrm").attr('src',path);
 	});
-	
-	// setup change period dialog
+
 	$('.changePeriod').on('click',function(){
 		var title = $(this).attr('title');
 		var data = $(this).attr('id').replace('changePeriod_','');
-		var path = "changestudentperiod.html?" + data;
+		var path = "changestudentperiod?" + data;
 		var dialog = $('<div id="studentPeriodDialog" style="overflow-y:hidden;"></div>');
 		var div = dialog.html('<iframe id="studentPeriodIfrm" width="100%" height="100%"></iframe>');
 		div.dialog({
 			modal: true,
-			width: '650',
-			height: '350',
+			width: '450',
+			height: '250',
 			title: title,
 			position: 'center',
 			close: function(){
@@ -127,13 +142,12 @@ $(document).ready(function(){
 				$(this).remove();
 			},
 			buttons: {
-				Close: function(){$(this).dialog('close');}
+				'<spring:message code="close" />': function(){$(this).dialog('close');}
 			}
 		});
 		$("#studentPeriodDialog > #studentPeriodIfrm").attr('src',path);
 	});
-	
-	// setup change period dialog
+
 	$('.removeStudent').on('click',function(){
 		var title = $(this).attr('title');
 		var data = $(this).attr('id').replace('removeStudent_','');
@@ -156,12 +170,12 @@ $(document).ready(function(){
 				$(this).remove();
 			},
 			buttons: {
-				Close: function(){$(this).dialog('close');}
+				'<spring:message code="close" />': function(){$(this).dialog('close');}
 			}
 		});
 		$("#removeStudentDialog > #removeStudentIfrm").attr('src',path);
 	});
-	
+
 	// setup change all passwords dialog
 	$('.changeAllPasswords').on('click',function(){
 		var title = $(this).attr('title');
@@ -177,7 +191,7 @@ $(document).ready(function(){
 			position: 'center',
 			close: function(){ $(this).remove(); },
 			buttons: {
-				Close: function(){$(this).dialog('close');}
+				'<spring:message code="close" />': function(){$(this).dialog('close');}
 			}
 		});
 		$("#changeAllPasswordsDialog > #changeAllPasswordsIfrm").attr('src',path);
@@ -222,7 +236,7 @@ var setSortable = function() {
 var setGradingContentHeight = function() {
 	//get the height of the window
 	var height = $(window).height();
-	
+
 	// set gradingContent height to fit bottom of screen
 	var contentHeight = height - $('.gradingTools').outerHeight(true) - $('.studentManageHeader:visible').outerHeight(true);
 	$('.gradingContent').height(contentHeight-28);
@@ -238,9 +252,9 @@ var createNewWorkgroup = function(periodId, runId) {
                           +"<li class='workgroupHeader newWorkgroupHeader'><spring:message code='teacher.management.viewmystudents.newTeamHeader'/></li>"+
                           "<li class='emptyGroup'><spring:message code='teacher.management.viewmystudents.newTeamInstructions'/></li></ul>"
                           +"</div>";
-                         
+
 	setSortable(); // re-register sortable elements to include new workgroup
-                             
+
 	newGroupCounts[periodId] = newGroupCount + 1;
 };
 
@@ -297,7 +311,7 @@ var registerWorkgroupChange = function(event, ui){
    		//console.log(workgroupchanges);
    		unsavedChanges = true;
    		$('#saveButton').removeClass('disabled');
-   		
+
    		// if workgroupFrom and workgroupTo are different, notify user that student data will change
    		if(workgroupFrom != 'groupless') { // student was groupless, no need to warn of data loss
 	   		if(workgroupTo == 'groupless'){
@@ -307,9 +321,9 @@ var registerWorkgroupChange = function(event, ui){
 	   		} else {
 	   			var notifyMsg = "<spring:message code='teacher.management.viewmystudents.moveStudentWarning_differentGroup'/>";
 	   		}
-   		
+
 		   	// TODO: add notification if change results in an empty workgroup
-	   		
+
 	   		displayNotification(notifyMsg); // display notifications
    		}
     }
@@ -317,7 +331,7 @@ var registerWorkgroupChange = function(event, ui){
 
 var postChanges = function(tabIndex){
 	var postData = function(postdata){
-   		var submitChangesUrl = "submitworkgroupchanges.html";
+   		var submitChangesUrl = "submitworkgroupchanges";
    		$.ajax({
    			type: "POST",
    			url: submitChangesUrl,
@@ -345,12 +359,12 @@ var postChanges = function(tabIndex){
    		unsavedChanges = false;
 
    		var tabIndex = "0";
-   			
+
    		if(xhr != null) {
    			//get the tab index from the response text
    			tabIndex = xhr.responseText;
    		}
-   		
+
    		var newHREF= window.location.href + "&tabIndex=" + tabIndex + "&refreshRequired=" + refreshRequired;
    	 	setTimeout("window.location.href='" +newHREF +"'", 500);
    	};
@@ -360,13 +374,13 @@ var postChanges = function(tabIndex){
    		$('#loading').dialog('close');
    		alert('<spring:message code="teacher.management.viewmystudents.saveError"/>');
    	};
-   	
+
    	var postDataStrings = new Array();
-   	
+
    	for (periodId in workgroupchanges){
    		var changeIndex = 0;
    		var postString = 'tabIndex='+tabIndex +'&runId='+${run.id}+'&periodId='+periodId;
-   		for (userId in workgroupchanges[periodId]) {         
+   		for (userId in workgroupchanges[periodId]) {
    			var workgroupFrom = workgroupchanges[periodId][userId]["workgroupFrom"];
    			var workgroupTo = workgroupchanges[periodId][userId]["workgroupTo"];
    			postString += '&userId_'+changeIndex +'='+userId+'&workgroupFrom_'+changeIndex +'='+workgroupFrom+'&workgroupTo_'+changeIndex +'='+workgroupTo;
@@ -375,7 +389,7 @@ var postChanges = function(tabIndex){
    		postString += '&numChanges=' + changeIndex;
    		postDataStrings.push(postString);
    	}
-	
+
    	var numPosts = postDataStrings.length;
    	var i = 0;
    	postData(postDataStrings[i]);
@@ -383,13 +397,13 @@ var postChanges = function(tabIndex){
 };
 
 // displays notification messages/warnings
-var displayNotification = function(message){
+var displayNotification = function(message) {
 	var selectedTab = $('#periodTabs').tabs("option", "active");
 	var selected = selectedTab + 1;
 	var toolbars = $('#period_' + selected + ' .studentManageHeader');
 	var top = toolbars.offset().top + toolbars.outerHeight() + 7;
 	// remove any existing notifications
-	if($('#notifications')){
+	if($('#notifications')) {
 		$('#notifications').remove();
 		if(notifyTimeout) clearTimeout(notifyTimeout);
 	}
@@ -400,12 +414,37 @@ var displayNotification = function(message){
 	notificationSpan.appendTo(notificationDiv);
 	notificationDiv.css({'top':top,"left":0,"right":0,"position":"absolute"}).appendTo($('.manageStudents'));
 	$('.gradingContent').css({'margin-top':'2em','padding-top':'0'});
-	notifyTimeout = setTimeout(function(){
+	notifyTimeout = setTimeout(function() {
 		$('#notifications').remove();
 		$('.gradingContent').css({'margin-top':'0','padding-top':'.5em'});
-	},15000); // remove after 15 seconds
+	}, 15000); // remove after 15 seconds
 };
 
+function changeWorkgroupPeriod(workgroupId) {
+    var path = 'change-workgroup-period/' + workgroupId;
+    var dialog = $('<div id="workgroupPeriodDialog" style="overflow-y:hidden;"></div>');
+    var div = dialog.html('<iframe id="workgroupPeriodIfrm" width="100%" height="100%"></iframe>');
+    div.dialog({
+        modal: true,
+        width: '450',
+        height: '250',
+        title: `Change Period for Team: ` + workgroupId,
+        position: 'center',
+        close: function(){
+            // check if page reload is required (student period was changed)
+            if(document.getElementById('workgroupPeriodIfrm').contentWindow['refreshRequired']){
+                $('#loading').dialog('open');
+                var newHREF = window.location.href + "&tabIndex=" + ${tabIndex} + "&refreshRequired=true";
+                window.location.href = newHREF;
+            }
+            $(this).remove();
+        },
+        buttons: {
+            '<spring:message code="close" />': function(){$(this).dialog('close');}
+        }
+    });
+    $("#workgroupPeriodDialog > #workgroupPeriodIfrm").attr('src', path);
+}
 </script>
 
 <link href="${contextPath}/<spring:theme code="globalstyles"/>" media="screen" rel="stylesheet"  type="text/css" />
@@ -422,29 +461,29 @@ var displayNotification = function(message){
 			<div class="gradingTools">
 				<div id="fixedGradingHeader" class="gradingHeader">
 					<div>
-						<a href="studentlist.html?runId=${run.id}" target="_blank"><img class="icon" alt="print" src="${contextPath}/<spring:theme code="print"/>" /><span><spring:message code="teacher.management.viewmystudents.print"/></span></a>
+						<a href="studentlist?runId=${run.id}" target="_blank"><img class="icon" alt="print" src="${contextPath}/<spring:theme code="print"/>" /><span><spring:message code="teacher.management.viewmystudents.print"/></span></a>
 						<a href="studentListExport?runId=${run.id}"><img class="icon" alt="excel" src="${contextPath}/<spring:theme code="address_book"/>" /><span><spring:message code="teacher.management.viewmystudents.export"/></span></a>
 					</div>
-					<div style="float:right;">
+					<div class="link-save" style="">
 						<a class="saveButton disabled" id="saveButton" onclick=""><spring:message code="teacher.management.viewmystudents.save"/></a>
 					</div>
 				</div>
-				
+
 				<div id="periodSelect" class="gradingHeader">
-					<div id="periodTabs" style="float:left;">
+					<div id="periodTabs">
 						<ul>
 						<li><a style="color:#FFF;padding: 2px 0;text-decoration: none !important;cursor: text !important;margin-left: 0;"><spring:message code="teacher.management.viewmystudents.changePeriodLabel"/> </a></li>
 						<c:forEach var="viewmystudentsperiod" varStatus="periodStatus" items="${viewmystudentsallperiods}">
-							<li><a href="#period_${viewmystudentsperiod.period.name}" class="periodChoice"><spring:message code="run_period"/> ${viewmystudentsperiod.period.name}</a></li>
+							<li><a href='#period_${fn:replace(viewmystudentsperiod.period.name, " ", "_")}' class="periodChoice"><spring:message code="run_period"/> ${viewmystudentsperiod.period.name}</a></li>
 						</c:forEach>
 						</ul>
 					</div>
 					<div style="clear:both;"></div>
 				</div>
 			</div>
-			
+
 				<c:forEach var="viewmystudentsperiod" varStatus="periodStatus" items="${viewmystudentsallperiods}">
-					<div id="period_${viewmystudentsperiod.period.name}">
+					<div id='period_${fn:replace(viewmystudentsperiod.period.name, " ", "_")}'>
 					<c:choose>
 						<c:when test="${fn:length(viewmystudentsperiod.period.members) == 0}">
 							<div class="gradingHeader studentManageHeader">
@@ -469,8 +508,8 @@ var displayNotification = function(message){
 							    	<li><spring:message code="teacher.management.viewmystudents.accessCode"/>&nbsp;<span class="manageDataStyle">${viewmystudentsperiod.run.runcode}</span></li>
 							    	<li style="float:right;">
 							    		<a onclick="createNewWorkgroup(${viewmystudentsperiod.period.id}, ${viewmystudentsperiod.run.id});"><img class="icon" alt="new team" src="${contextPath}/<spring:theme code="multi_agents"/>" /><span><spring:message code="teacher.management.viewmystudents.createNewTeam"/></span></a>
-							     		<a class="changeAllPasswords" id="changeAllPasswords_groupId=${viewmystudentsperiod.period.id}&runId=${viewmystudentsperiod.run.id}" title="<spring:message code="teacher.management.viewmystudents.changeAllPasswords"/>: <spring:message code="run_period"/> ${viewmystudentsperiod.period.name}"><img class="icon" alt="password" src="${contextPath}/<spring:theme code="shield"/>" /><span><spring:message code="teacher.management.viewmystudents.changeAllPasswords"/></span></a>
-							       		<a><spring:message code="help"/></a>
+                      <a class="changeAllPasswords" id="changeAllPasswords_groupId=${viewmystudentsperiod.period.id}&runId=${viewmystudentsperiod.run.id}" title="<spring:message code="teacher.management.viewmystudents.changeAllPasswords"/>: <spring:message code="run_period"/> ${viewmystudentsperiod.period.name}"><img class="icon" alt="password" src="${contextPath}/<spring:theme code="shield"/>" /><span><spring:message code="teacher.management.viewmystudents.changeAllPasswords"/></span></a>
+                      <a><spring:message code="help"/></a>
 							       	</li>
 							    </ul>
 							</div>
@@ -481,20 +520,21 @@ var displayNotification = function(message){
 									<div class="workarea" id="groupless_div_${viewmystudentsperiod.period.id}">
 									  <ul id="ul_${viewmystudentsperiod.period.id}_workgroup_groupless" class="draglist">
 									    <li class="grouplessHeader"><spring:message code="teacher.management.viewmystudents.unassignedStudents"/></li>
-						
-						                <c:forEach var="mem" items="${viewmystudentsperiod.grouplessStudents}">
-									      <li class="grouplesslist" id="li_${mem.id}_groupless">
-									      
-									         <span class="userNameWithinView">${mem.userDetails.firstname} ${mem.userDetails.lastname} (${mem.userDetails.username})</span>
-						    			     <span class="userLinksBar">
+                      <c:forEach var="mem" items="${viewmystudentsperiod.grouplessStudents}">
+                        <li class="grouplesslist" id="li_${mem.id}_groupless">
+
+                          <span class="usernameWithinView">${mem.userDetails.firstname} ${mem.userDetails.lastname} <span dir=ltr>(${mem.userDetails.username})</span></span>
+                          <span class="userLinksBar">
 							    			     <a class="userLinks studentInfo" id="studentInfo_${mem.userDetails.username}" title="<spring:message code="teacher.management.viewmystudents.studentInfoTitle"/> ${mem.userDetails.username}"><spring:message code="teacher.management.viewmystudents.studentInfo"/></a>
-							    			     <a class="userLinks changePassword" id="changePassword_${mem.userDetails.username}" title="<spring:message code="teacher.management.viewmystudents.changeStudentPasswordTitle"/> ${mem.userDetails.username}"><spring:message code="teacher.management.viewmystudents.changeStudentPassword"/></a>
-							    			     <a class="userLinks changePeriod" id="changePeriod_userId=${mem.id}&runId=${viewmystudentsperiod.run.id}&projectCode=${viewmystudentsperiod.period.name}" title="<spring:message code="teacher.management.viewmystudents.changeStudentPeriodTitle"/> ${mem.userDetails.username}"><spring:message code="teacher.management.viewmystudents.changeStudentPeriod"/></a>
+                             <c:if test="${!mem.userDetails.isGoogleUser()}">
+                               <a class="userLinks changePassword" id="changePassword_${mem.userDetails.username}" title="<spring:message code="teacher.management.viewmystudents.changeStudentPasswordTitle"/> ${mem.userDetails.username}"><spring:message code="teacher.management.viewmystudents.changeStudentPassword"/></a>
+                             </c:if>
+							    			     <a class="userLinks changePeriod" id="changePeriod_userId=${mem.id}&runId=${viewmystudentsperiod.run.id}&currentPeriod=${viewmystudentsperiod.period.name}" title="<spring:message code="teacher.management.viewmystudents.changeStudentPeriodTitle"/> ${mem.userDetails.username}"><spring:message code="teacher.management.viewmystudents.changeStudentPeriod"/></a>
 							    			     <a class="userLinks removeStudent" id="removeStudent_runId=${viewmystudentsperiod.run.id}&userId=${mem.id}" title="<spring:message code="teacher.management.viewmystudents.removeStudentTitle"/> ${mem.userDetails.username}"><spring:message code="teacher.management.viewmystudents.removeStudent"/></a>
 							    			 </span>
-						    			  </li>
-									    </c:forEach>
-						  			  </ul>
+                        </li>
+                      </c:forEach>
+                    </ul>
 									</div>
 									</td>
 									<td>
@@ -505,25 +545,26 @@ var displayNotification = function(message){
 						            <c:forEach var="workgroupInPeriod" varStatus="workgroupVarStatus" items="${viewmystudentsperiod.workgroups}" >
 						                <td>
 						              <div class="workarea" id="div_${workgroupInPeriod.id}">
-									    <ul id="ul_${viewmystudentsperiod.period.id}_workgroup_${workgroupInPeriod.id}" class="draglist">  
-									      <li class="workgroupHeader"><spring:message code="teacher.management.viewmystudents.team"/> ${workgroupInPeriod.id}
-									      </li>
-									      
-									      <c:forEach var="workgroupMember" items="${workgroupInPeriod.members}">
-									      
-									        <li class="workgrouplist" id="li_${workgroupMember.id}_${workgroupInPeriod.id}">
-									         <span class="userNameWithinView">${workgroupMember.userDetails.firstname} ${workgroupMember.userDetails.lastname} (${workgroupMember.userDetails.username})</span>
-						    			     <span class="userLinksBar">
+									    <ul id="ul_${viewmystudentsperiod.period.id}_workgroup_${workgroupInPeriod.id}" class="draglist">
+                                          <li class="workgroupHeader"><spring:message code="teacher.management.viewmystudents.team"/>
+                                             ${workgroupInPeriod.id}
+                                             <a style="position: absolute; right: 1em; " class="userLinks changeWorkgroupPeriod" onclick="changeWorkgroupPeriod(${workgroupInPeriod.id})" title="<spring:message code="teacher.management.viewmystudents.changeStudentPeriodTitle"/> ${workgroupMember.userDetails.username}"><spring:message code="teacher.management.viewmystudents.changeStudentPeriod"/></a>
+                                          </li>
+                        <c:forEach var="workgroupMember" items="${workgroupInPeriod.members}">
+                          <li class="workgrouplist" id="li_${workgroupMember.id}_${workgroupInPeriod.id}">
+                            <span class="usernameWithinView">${workgroupMember.userDetails.firstname} ${workgroupMember.userDetails.lastname} <span dir=ltr>(${workgroupMember.userDetails.username})</span></span>
+                            <span class="userLinksBar">
 							    			     <a class="userLinks studentInfo" id="studentInfo_${workgroupMember.userDetails.username}" title="<spring:message code="teacher.management.viewmystudents.studentInfoTitle"/> ${workgroupMember.userDetails.username}"><spring:message code="teacher.management.viewmystudents.studentInfo"/></a>
-							    			     <a class="userLinks changePassword" id="changePassword_${workgroupMember.userDetails.username}" title="<spring:message code="teacher.management.viewmystudents.changeStudentPasswordTitle"/> ${workgroupMember.userDetails.username}"><spring:message code="teacher.management.viewmystudents.changeStudentPassword"/></a>
-							    			     <a class="userLinks changePeriod" id="changePeriod_userId=${workgroupMember.id}&runId=${viewmystudentsperiod.run.id}&projectCode=${viewmystudentsperiod.period.name}" title="<spring:message code="teacher.management.viewmystudents.changeStudentPeriodTitle"/> ${workgroupMember.userDetails.username}"><spring:message code="teacher.management.viewmystudents.changeStudentPeriod"/></a>
+                             <c:if test="${!workgroupMember.userDetails.isGoogleUser()}">
+                               <a class="userLinks changePassword" id="changePassword_${workgroupMember.userDetails.username}" title="<spring:message code="teacher.management.viewmystudents.changeStudentPasswordTitle"/> ${workgroupMember.userDetails.username}"><spring:message code="teacher.management.viewmystudents.changeStudentPassword"/></a>
+                             </c:if>
 							    			     <a class="userLinks removeStudent" id="removeStudent_runId=${viewmystudentsperiod.run.id}&userId=${workgroupMember.id}" title="<spring:message code="teacher.management.viewmystudents.removeStudentTitle"/> ${workgroupMember.userDetails.username}"><spring:message code="teacher.management.viewmystudents.removeStudent"/></a>
 						    			     </span>
-									        </li>
-									      </c:forEach>
+                          </li>
+                        </c:forEach>
 									    </ul>
 									   </div>
-						                 </td>                
+						                 </td>
 						                <c:choose>
 						                    <c:when test="${workgroupVarStatus.index % 2 == 1}" >
 						                      </tr><tr>
@@ -535,7 +576,7 @@ var displayNotification = function(message){
 						            </tr>
 					            </table>
 								</div>
-				     
+
 						</c:otherwise>
 					</c:choose>
 					</div>
@@ -544,7 +585,7 @@ var displayNotification = function(message){
 	</div>
  	<div id="loading" style="display:none;">
         <div class="hd"><spring:message code="teacher.management.viewmystudents.saveMessage"/></div>
-        <div class="bd"><img src="${contextPath}/vle/images/loading.gif"></div>
+        <div class="bd"><img src="${contextPath}/wise5/classroomMonitor/manageStudents/loading.gif"></div>
         <div class="ft">
         </div>
     </div>

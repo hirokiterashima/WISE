@@ -1,18 +1,18 @@
-.nav-item__grading {
-    background-color: #ffffff;
-    margin-bottom: 16px;
-    //padding: 0 16px;
-
-    .component {
-        padding: 0;
-    }
+.student-select {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
-.nav-item__grading__info {
-    padding: 12px;
-    background-color: color('gray-lightest');
+.workgroup-progress {
+  margin-bottom: 8px;
+
+  @media (min-width: $layout-breakpoint-sm) {
+    margin-bottom: 0;
+  }
 }
 
-.nav-item__grading__timestamp {
-    border-bottom: 1px dotted;
+alert-status-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
 }

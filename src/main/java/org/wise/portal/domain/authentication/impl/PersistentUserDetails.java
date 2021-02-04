@@ -1,9 +1,9 @@
 /**
- * Copyright (c) 2007-2015 Encore Research Group, University of Toronto
+ * Copyright (c) 2007-2019 Encore Research Group, University of Toronto
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -42,13 +42,16 @@ import javax.persistence.Table;
 import javax.persistence.Transient;
 import javax.persistence.Version;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.wise.portal.domain.authentication.MutableUserDetails;
+import org.wise.portal.service.authentication.UserDetailsService;
 
 /**
  * Implementation class of <code>MutableUserDetails</code> that uses an EJB3
  * compliant object persistence mechanism.
- * 
+ *
  * @author Cynick Young
  * @author Laurel Williams
  */
@@ -57,493 +60,397 @@ import org.wise.portal.domain.authentication.MutableUserDetails;
 @Inheritance(strategy = InheritanceType.JOINED)
 public class PersistentUserDetails implements MutableUserDetails {
 
-    @Transient
-    public static final String DATA_STORE_NAME = "user_details";
+  @Transient
+  public static final String DATA_STORE_NAME = "user_details";
 
-    @Transient
-    public static final String GRANTED_AUTHORITY_JOIN_TABLE_NAME = "user_details_related_to_roles";
+  @Transient
+  public static final String GRANTED_AUTHORITY_JOIN_TABLE_NAME = "user_details_related_to_roles";
 
-    @Transient
-    public static final String USER_DETAILS_JOIN_COLUMN_NAME = "user_details_fk";
+  @Transient
+  public static final String USER_DETAILS_JOIN_COLUMN_NAME = "user_details_fk";
 
-    @Transient
-    public static final String GRANTED_AUTHORITY_JOIN_COLUMN_NAME = "granted_authorities_fk";
+  @Transient
+  public static final String GRANTED_AUTHORITY_JOIN_COLUMN_NAME = "granted_authorities_fk";
 
-    @Transient
-    public static final String COLUMN_NAME_USERNAME = "username";
+  @Transient
+  public static final String COLUMN_NAME_USERNAME = "username";
 
-    @Transient
-    public static final String COLUMN_NAME_PASSWORD = "password";
+  @Transient
+  public static final String COLUMN_NAME_PASSWORD = "password";
 
-    @Transient
-    public static final String COLUMN_NAME_EMAIL_ADDRESS = "email_address";
+  @Transient
+  public static final String COLUMN_NAME_EMAIL_ADDRESS = "email_address";
 
-    @Transient
-    public static final String COLUMN_NAME_RECENT_FAILED_LOGIN = "recent_failed_login_time";
+  @Transient
+  public static final String COLUMN_NAME_RECENT_FAILED_LOGIN = "recent_failed_login_time";
 
-    @Transient
-    public static final String COLUMN_NAME_RECENT_NUMBER_FAILED_LOGINS = "recent_number_of_failed_login_attempts";
+  @Transient
+  public static final String COLUMN_NAME_RECENT_NUMBER_FAILED_LOGINS = "recent_number_of_failed_login_attempts";
 
-    @Transient
-    public static final String COLUMN_NAME_REST_PASSWORD_KEY = "reset_password_key";
-    
-    @Transient
-    public static final String COLUMN_NAME_RESET_PASSWORD_REQUEST_TIME = "reset_password_request_time";
+  @Transient
+  public static final String COLUMN_NAME_REST_PASSWORD_KEY = "reset_password_key";
 
-    @Transient
-    public static final String COLUMN_NAME_LANGUAGE = "language";
+  @Transient
+  public static final String COLUMN_NAME_RESET_PASSWORD_REQUEST_TIME = "reset_password_request_time";
 
-    @Transient
-    private static final long serialVersionUID = 1L;
+  @Transient
+  public static final String COLUMN_NAME_LANGUAGE = "language";
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Long id = null;
+  @Transient
+  public static final String COLUMN_NAME_RESET_PASSWORD_VERIFICATION_CODE_REQUEST_TIME = "reset_password_verification_code_request_time";
 
-    @Version
-    @Column(name = "OPTLOCK")
-    private Integer version = null;
+  @Transient
+  public static final String COLUMN_NAME_RESET_PASSWORD_VERIFICATION_CODE = "reset_password_verification_code";
 
-    // EJB3 spec annotations require the use of a java <code>Collection</code>.
-    // However, Acegi Security deals with an array. There are internal methods
-    // to convert to and from the different data structures.
-    @ManyToMany(targetEntity = PersistentGrantedAuthority.class, fetch = FetchType.LAZY)
-    @JoinTable(name = PersistentUserDetails.GRANTED_AUTHORITY_JOIN_TABLE_NAME, joinColumns = { @JoinColumn(name = USER_DETAILS_JOIN_COLUMN_NAME, nullable = false) }, inverseJoinColumns = @JoinColumn(name = GRANTED_AUTHORITY_JOIN_COLUMN_NAME, nullable = false))
-    private Set<GrantedAuthority> grantedAuthorities = null;
+  @Transient
+  public static final String COLUMN_NAME_RECENT_FAILED_VERIFICATION_ATTEMPT_TIME = "recent_failed_verification_code_attempt_time";
 
-    @Column(name = PersistentUserDetails.COLUMN_NAME_PASSWORD, nullable = false)
-    private String password = null;
+  @Transient
+  public static final String COLUMN_NAME_RECENT_NUMBER_FAILED_VERIFICATION_ATTEMPTS = "recent_number_of_failed_verification_code_attempts";
 
-    @Column(name = PersistentUserDetails.COLUMN_NAME_USERNAME, unique = true, nullable = false)
-    private String username = null;
+  @Transient
+  private static final long serialVersionUID = 1L;
 
-    @Column(name = PersistentUserDetails.COLUMN_NAME_EMAIL_ADDRESS, nullable = true)
-    private String emailAddress = null;
+  @Id
+  @GeneratedValue(strategy = GenerationType.AUTO)
+  @Getter
+  private Long id = null;
 
-    @Column(name = "account_not_expired", nullable = false)
-    private Boolean accountNonExpired = Boolean.TRUE;
+  @Version
+  @Column(name = "OPTLOCK")
+  private Integer version = null;
 
-    @Column(name = "account_not_locked", nullable = false)
-    private Boolean accountNonLocked = Boolean.TRUE;
+  // EJB3 spec annotations require the use of a java <code>Collection</code>.
+  // However, Acegi Security deals with an array. There are internal methods
+  // to convert to and from the different data structures.
+  @ManyToMany(targetEntity = PersistentGrantedAuthority.class, fetch = FetchType.EAGER)
+  @JoinTable(name = PersistentUserDetails.GRANTED_AUTHORITY_JOIN_TABLE_NAME, joinColumns = { @JoinColumn(name = USER_DETAILS_JOIN_COLUMN_NAME, nullable = false) }, inverseJoinColumns = @JoinColumn(name = GRANTED_AUTHORITY_JOIN_COLUMN_NAME, nullable = false))
+  private Set<GrantedAuthority> grantedAuthorities = null;
 
-    @Column(name = "credentials_not_expired", nullable = false)
-    private Boolean credentialsNonExpired = Boolean.TRUE;
+  @Column(name = PersistentUserDetails.COLUMN_NAME_PASSWORD, nullable = false)
+  @Getter
+  @Setter
+  private String password = null;
 
-    @Column(name = "enabled", nullable = false)
-    private Boolean enabled = Boolean.TRUE;
-    
-    @Column(name = PersistentUserDetails.COLUMN_NAME_RECENT_FAILED_LOGIN, nullable = true)
-    private Date recentFailedLoginTime = null;
-    
-    @Column(name = PersistentUserDetails.COLUMN_NAME_RECENT_NUMBER_FAILED_LOGINS, nullable = true)
-    private Integer numberOfRecentFailedLoginAttempts = 0;
+  @Column(name = PersistentUserDetails.COLUMN_NAME_USERNAME, unique = true, nullable = false)
+  @Getter
+  @Setter
+  private String username = null;
 
-    @Column(name = PersistentUserDetails.COLUMN_NAME_REST_PASSWORD_KEY, nullable = true)
-    private String resetPasswordKey = null;
-    
-    @Column(name = PersistentUserDetails.COLUMN_NAME_RESET_PASSWORD_REQUEST_TIME, nullable = true)
-    private Date resetPasswordRequestTime = null;
-    
-    @Column(name = PersistentUserDetails.COLUMN_NAME_LANGUAGE, nullable = true)
-    private String language = null;
-    
-    public Long getId() {
-        return id;
-    }
+  @Column(name = PersistentUserDetails.COLUMN_NAME_EMAIL_ADDRESS, nullable = true)
+  @Setter
+  private String emailAddress = null;
 
-    @SuppressWarnings("unused")
-    private void setId(Long id) {
-        this.id = id;
-    }
+  @Column(name = "account_not_expired", nullable = false)
+  private Boolean accountNonExpired = Boolean.TRUE;
 
-    /**
-     * @return the version
-     */
-    @SuppressWarnings("unused")
-    private Integer getVersion() {
-        return version;
-    }
+  @Column(name = "account_not_locked", nullable = false)
+  private Boolean accountNonLocked = Boolean.TRUE;
 
-    /**
-     * @param version
-     *            the version to set
-     */
-    @SuppressWarnings("unused")
-    private void setVersion(Integer version) {
-        this.version = version;
-    }
+  @Column(name = "credentials_not_expired", nullable = false)
+  private Boolean credentialsNonExpired = Boolean.TRUE;
 
-    /**
-     * @see net.sf.sail.webapp.domain.authentication.MutableUserDetails#setPassword(java.lang.String)
-     */
-    public void setPassword(String password) {
-        this.password = password;
-    }
+  @Column(name = "enabled", nullable = false)
+  private Boolean enabled = Boolean.TRUE;
 
-    /**
-     * @see net.sf.sail.webapp.domain.authentication.MutableUserDetails#setUsername(java.lang.String)
-     */
-    public void setUsername(String username) {
-        this.username = username;
-    }
+  @Column(name = PersistentUserDetails.COLUMN_NAME_RECENT_FAILED_LOGIN, nullable = true)
+  @Getter
+  @Setter
+  private Date recentFailedLoginTime = null;
 
-    /**
-     * @see org.acegisecurity.userdetails.UserDetails#getAuthorities()
-     */
-    @Transient
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Used by Acegi Security. This implements the required method from
-        // Acegi Security. This implementation does not obtain the values
-        // directly from the data store.
-        return this.getGrantedAuthorities();
-    }
+  @Column(name = PersistentUserDetails.COLUMN_NAME_RECENT_NUMBER_FAILED_LOGINS, nullable = true)
+  @Getter
+  @Setter
+  private Integer numberOfRecentFailedLoginAttempts = 0;
 
-    /**
-     * @see net.sf.sail.webapp.domain.authentication.MutableUserDetails#setAuthorities(org.acegisecurity.GrantedAuthority[])
-     */
-    @SuppressWarnings("unchecked")
-    public synchronized void setAuthorities(GrantedAuthority[] authorities) {
-        this.setGrantedAuthorities(new HashSet(Arrays.asList(authorities)));
-    }
+  @Column(name = PersistentUserDetails.COLUMN_NAME_REST_PASSWORD_KEY, nullable = true)
+  @Getter
+  @Setter
+  private String resetPasswordKey = null;
 
-    private Set<GrantedAuthority> getGrantedAuthorities() {
+  @Column(name = PersistentUserDetails.COLUMN_NAME_RESET_PASSWORD_REQUEST_TIME, nullable = true)
+  @Getter
+  @Setter
+  private Date resetPasswordRequestTime = null;
+
+  @Column(name = PersistentUserDetails.COLUMN_NAME_LANGUAGE, nullable = true)
+  private String language = "en";
+
+  @Column(name = "googleUserId")
+  @Getter
+  @Setter
+  private String googleUserId;
+
+  @Column(name = PersistentUserDetails.COLUMN_NAME_RESET_PASSWORD_VERIFICATION_CODE_REQUEST_TIME, nullable = true)
+  @Getter
+  @Setter
+  private Date resetPasswordVerificationCodeRequestTime = null;
+
+  @Column(name = PersistentUserDetails.COLUMN_NAME_RESET_PASSWORD_VERIFICATION_CODE, nullable = true)
+  @Getter
+  @Setter
+  private String resetPasswordVerificationCode = null;
+
+  @Column(name = PersistentUserDetails.COLUMN_NAME_RECENT_FAILED_VERIFICATION_ATTEMPT_TIME, nullable = true)
+  @Getter
+  @Setter
+  private Date recentFailedVerificationCodeAttemptTime = null;
+
+  @Column(name = PersistentUserDetails.COLUMN_NAME_RECENT_NUMBER_FAILED_VERIFICATION_ATTEMPTS, nullable = true)
+  @Getter
+  @Setter
+  private Integer numberOfRecentFailedVerificationCodeAttempts = 0;
+
+  @Transient
+  public Collection<? extends GrantedAuthority> getAuthorities() {
+    // Used by Acegi Security. This implements the required method from
+    // Acegi Security. This implementation does not obtain the values
+    // directly from the data store.
+    return this.getGrantedAuthorities();
+  }
+
+  @SuppressWarnings("unchecked")
+  public synchronized void setAuthorities(GrantedAuthority[] authorities) {
+    this.setGrantedAuthorities(new HashSet(Arrays.asList(authorities)));
+  }
+
+  private Set<GrantedAuthority> getGrantedAuthorities() {
+    /* Used only for persistence */
+    return this.grantedAuthorities;
+  }
+
+  @SuppressWarnings("unused")
+  private synchronized void setGrantedAuthorities(
+    Set<GrantedAuthority> grantedAuthorities) {
         /* Used only for persistence */
-        return this.grantedAuthorities;
-    }
+    this.grantedAuthorities = grantedAuthorities;
+  }
 
-    @SuppressWarnings("unused")
-    private synchronized void setGrantedAuthorities(
-            Set<GrantedAuthority> grantedAuthorities) {
-        /* Used only for persistence */
-        this.grantedAuthorities = grantedAuthorities;
-    }
+  public boolean isAccountNonExpired() {
+    return this.accountNonExpired;
+  }
 
-    /**
-     * @see org.acegisecurity.userdetails.UserDetails#getPassword()
-     */
-    public String getPassword() {
-        return this.password;
-    }
+  public boolean isAccountNonLocked() {
+    return this.accountNonLocked;
+  }
 
-    /**
-     * @see org.acegisecurity.userdetails.UserDetails#getUsername()
-     */
-    public String getUsername() {
-        return this.username;
-    }
+  public boolean isCredentialsNonExpired() {
+    return this.credentialsNonExpired;
+  }
 
-    /**
-     * @see org.acegisecurity.userdetails.UserDetails#isAccountNonExpired()
-     */
-    public boolean isAccountNonExpired() {
-        return this.accountNonExpired;
-    }
+  public boolean isEnabled() {
+    return this.enabled;
+  }
 
-    /**
-     * @see org.acegisecurity.userdetails.UserDetails#isAccountNonLocked()
-     */
-    public boolean isAccountNonLocked() {
-        return this.accountNonLocked;
-    }
+  @SuppressWarnings("unused")
+  private void setAccountNonExpired(Boolean accountNonExpired) {
+    this.accountNonExpired = accountNonExpired;
+  }
 
-    /**
-     * @see org.acegisecurity.userdetails.UserDetails#isCredentialsNonExpired()
-     */
-    public boolean isCredentialsNonExpired() {
-        return this.credentialsNonExpired;
-    }
+  @SuppressWarnings("unused")
+  private void setAccountNonLocked(Boolean accountNonLocked) {
+    this.accountNonLocked = accountNonLocked;
+  }
 
-    /**
-     * @see org.acegisecurity.userdetails.UserDetails#isEnabled()
-     */
-    public boolean isEnabled() {
-        return this.enabled;
-    }
+  @SuppressWarnings("unused")
+  private void setCredentialsNonExpired(Boolean credentialsNonExpired) {
+    this.credentialsNonExpired = credentialsNonExpired;
+  }
 
-    
-    /**
-     * @param accountNonExpired
-     *            the accountNonExpired to set
-     */
-    @SuppressWarnings("unused")
-    private void setAccountNonExpired(Boolean accountNonExpired) {
-        this.accountNonExpired = accountNonExpired;
-    }
+  @SuppressWarnings("unused")
+  private void setEnabled(Boolean enabled) {
+    this.enabled = enabled;
+  }
 
-    /**
-     * @param accountNonLocked
-     *            the accountNonLocked to set
-     */
-    @SuppressWarnings("unused")
-    private void setAccountNonLocked(Boolean accountNonLocked) {
-        this.accountNonLocked = accountNonLocked;
-    }
+  @Override
+  public int hashCode() {
+    final int PRIME = 31;
+    int result = 1;
+    result = PRIME * result
+      + ((this.username == null) ? 0 : this.username.hashCode());
+    return result;
+  }
 
-    /**
-     * @param credentialsNonExpired
-     *            the credentialsNonExpired to set
-     */
-    @SuppressWarnings("unused")
-    private void setCredentialsNonExpired(Boolean credentialsNonExpired) {
-        this.credentialsNonExpired = credentialsNonExpired;
-    }
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    final PersistentUserDetails other = (PersistentUserDetails) obj;
+    if (this.username == null) {
+      if (other.username != null)
+        return false;
+    } else if (!this.username.equals(other.username))
+      return false;
+    return true;
+  }
 
-    /**
-     * @param enabled
-     *            the enabled to set
-     */
-    @SuppressWarnings("unused")
-    private void setEnabled(Boolean enabled) {
-        this.enabled = enabled;
+  public String getEmailAddress() {
+    if (emailAddress != null) {
+      return emailAddress;
+    } else {
+      return "";
     }
+  }
 
-    /**
-     * @see java.lang.Object#hashCode()
-     */
-    @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result
-                + ((this.username == null) ? 0 : this.username.hashCode());
-        return result;
+  public synchronized void addAuthority(GrantedAuthority authority) {
+    if (this.grantedAuthorities == null)
+      this.grantedAuthorities = new HashSet<GrantedAuthority>();
+    this.grantedAuthorities.add(authority);
+  }
+
+  public synchronized void removeAuthority(GrantedAuthority authority) {
+    if (this.grantedAuthorities != null && this.grantedAuthorities.contains(authority)) {
+      this.grantedAuthorities.remove(authority);
     }
+  }
 
-    /**
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final PersistentUserDetails other = (PersistentUserDetails) obj;
-        if (this.username == null) {
-            if (other.username != null)
-                return false;
-        } else if (!this.username.equals(other.username))
-            return false;
+  public boolean hasGrantedAuthority(String authority) {
+    for (GrantedAuthority grantedAuthority : this.grantedAuthorities) {
+      if (grantedAuthority.getAuthority().equals(authority)) {
         return true;
+      }
     }
+    return false;
+  }
 
-    /**
-     * @see net.sf.sail.webapp.domain.authentication.MutableUserDetails#getEmailAddress()
-     */
-    public String getEmailAddress() {
-        return emailAddress;
+  public void setEnabled(boolean enabled) {
+    this.enabled = enabled;
+  }
+
+  public void incrementNumberOfRecentFailedLoginAttempts() {
+    this.numberOfRecentFailedLoginAttempts++;
+  }
+
+  @Override
+  public String getFirstname() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public void setFirstname(String firstname) {
+    // TODO Auto-generated method stub
+  }
+
+  @Override
+  public String getLastname() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public void setLastname(String lastname) {
+    // TODO Auto-generated method stub
+  }
+
+  @Override
+  public Date getSignupdate() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public void setSignupdate(Date signupdate) {
+    // TODO Auto-generated method stub
+  }
+
+  @Override
+  public HashMap<String, Object> getInfo() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public String getCoreUsername() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public String[] getUsernameSuffixes() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public String getNextUsernameSuffix(String currentUsernameSuffix) {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public Integer getNumberOfLogins() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public void setNumberOfLogins(Integer numberOfLogins) {
+    // TODO Auto-generated method stub
+  }
+
+  @Override
+  public void setLastLoginTime(Date lastLoginTime) {
+    // TODO Auto-generated method stub
+  }
+
+  public String getLanguage() {
+    return language != null ? language : "en";
+  }
+
+  public void setLanguage(String language) {
+    this.language = language;
+  }
+
+  @Override
+  public void incrementNumberOfLogins() {
+    // TODO Auto-generated method stub
+  }
+
+  public void setResetPasswordVerificationCodeRequestTime(Date date) {
+    this.resetPasswordVerificationCodeRequestTime = date;
+  }
+
+  public void clearResetPasswordVerificationCodeRequestTime() {
+    this.resetPasswordVerificationCodeRequestTime = null;
+  }
+
+  public void setResetPasswordVerificationCode(String verificationCode) {
+    this.resetPasswordVerificationCode = verificationCode;
+  }
+
+  public void clearResetPasswordVerificationCode() {
+    this.resetPasswordVerificationCode = null;
+  }
+
+  public void setRecentFailedVerificationCodeAttemptTime(Date date) {
+    this.recentFailedVerificationCodeAttemptTime = date;
+  }
+
+  public void clearRecentFailedVerificationCodeAttemptTime() {
+    this.recentFailedVerificationCodeAttemptTime = null;
+  }
+
+  public void incrementNumberOfRecentFailedVerificationCodeAttempts() {
+    if (this.numberOfRecentFailedVerificationCodeAttempts == null) {
+      this.numberOfRecentFailedVerificationCodeAttempts = 0;
     }
+    this.numberOfRecentFailedVerificationCodeAttempts++;
+  }
 
-    /**
-     * @see net.sf.sail.webapp.domain.authentication.MutableUserDetails#setEmailAddress(java.lang.String)
-     */
-    public void setEmailAddress(String emailAddress) {
-        this.emailAddress = emailAddress;
-    }
+  public void clearNumberOfRecentFailedVerificationCodeAttempts() {
+    this.numberOfRecentFailedVerificationCodeAttempts = null;
+  }
 
-    /**
-     * @see net.sf.sail.webapp.domain.authentication.MutableUserDetails#addAuthority(org.acegisecurity.GrantedAuthority)
-     */
-    public synchronized void addAuthority(GrantedAuthority authority) {
-        if (this.grantedAuthorities == null)
-            this.grantedAuthorities = new HashSet<GrantedAuthority>();
-        this.grantedAuthorities.add(authority);
-    }
+  public boolean isAdminUser() {
+    return hasGrantedAuthority(UserDetailsService.ADMIN_ROLE);
+  }
 
-    /**
-     * @see net.sf.sail.webapp.domain.authentication.MutableUserDetails#removeAuthority(org.acegisecurity.GrantedAuthority)
-     */
-    public synchronized void removeAuthority(GrantedAuthority authority) {
-        if (this.grantedAuthorities != null && this.grantedAuthorities.contains(authority)) {
-        	this.grantedAuthorities.remove(authority);
-        }
-    }
-    
-    /**
-     * @see net.sf.sail.webapp.domain.authentication.MutableUserDetails#hasGrantedAuthority(java.lang.String)
-     */
-	public boolean hasGrantedAuthority(String authority) {
-		for (GrantedAuthority grantedAuthority : this.grantedAuthorities) {
-			if (grantedAuthority.getAuthority().equals(authority)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * @see net.sf.sail.webapp.domain.authentication.MutableUserDetails#setEnabled(boolean)
-	 */
-	public void setEnabled(boolean enabled) {
-		this.enabled = enabled;
-	}
-
-	/**
-	 * Get the recent failed login timestamp
-	 * @return
-	 */
-	public Date getRecentFailedLoginTime() {
-		return this.recentFailedLoginTime;
-	}
-	
-	/**
-	 * Set the recent failed login timestamp
-	 * @param recentFailedLoginTime
-	 */
-	public void setRecentFailedLoginTime(Date recentFailedLoginTime) {
-		this.recentFailedLoginTime = recentFailedLoginTime;
-	}
-	
-	/**
-	 * Get the number of recent failed login attempts
-	 * @return
-	 */
-	public Integer getNumberOfRecentFailedLoginAttempts() {
-		return this.numberOfRecentFailedLoginAttempts;
-	}
-
-	/**
-	 * Set the number of recent failed login attempts
-	 * @param numberOfFailedLoginAttempts
-	 */
-	public void setNumberOfRecentFailedLoginAttempts(Integer numberOfRecentFailedLoginAttempts) {
-		this.numberOfRecentFailedLoginAttempts = numberOfRecentFailedLoginAttempts;
-	}
-	
-	/**
-	 * Increase the number of recent failed login attempts by 1
-	 */
-	public void incrementNumberOfRecentFailedLoginAttempts() {
-		this.numberOfRecentFailedLoginAttempts++;
-	}
-
-	/**
-	 * Set the password key
-	 * @param passwordKey an alphanumeric string
-	 */
-	@Override
-	public void setResetPasswordKey(String resetPasswordKey) {
-		this.resetPasswordKey = resetPasswordKey;
-	}
-
-	/**
-	 * Get the password key
-	 * @return an alphanumeric string
-	 */
-	@Override
-	public String getResetPasswordKey() {
-		return this.resetPasswordKey;
-	}
-
-	/**
-	 * Set the time the user requested a password reset
-	 * @param resetPasswordRequestTime the time the user requested the password reset
-	 */
-	@Override
-	public void setResetPasswordRequestTime(Date resetPasswordRequestTime) {
-		this.resetPasswordRequestTime = resetPasswordRequestTime;
-	}
-
-	/**
-	 * Get the time the user requested a password reset
-	 * @return the time the user requested the password reset
-	 */
-	@Override
-	public Date getResetPasswordRequestTime() {
-		return this.resetPasswordRequestTime;
-	}
-
-	@Override
-	public String getFirstname() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void setFirstname(String firstname) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public String getLastname() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void setLastname(String lastname) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public Date getSignupdate() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void setSignupdate(Date signupdate) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public HashMap<String, Object> getInfo() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public String getCoreUsername() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public String[] getUsernameSuffixes() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public String getNextUsernameSuffix(String currentUsernameSuffix) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Integer getNumberOfLogins() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void setNumberOfLogins(Integer numberOfLogins) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void setLastLoginTime(Date lastLoginTime) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public String getLanguage() {
-		return language;
-	}
-
-	public void setLanguage(String language) {
-		this.language = language;
-	}
-
-	@Override
-	public void incrementNumberOfLogins() {
-		// TODO Auto-generated method stub
-		
-	}
+  public boolean isGoogleUser() {
+    return this.googleUserId != null && !this.googleUserId.isEmpty();
+  }
 }

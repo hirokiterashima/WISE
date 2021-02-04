@@ -3,7 +3,7 @@
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -28,45 +28,25 @@ import org.wise.portal.domain.authentication.MutableUserDetails;
  * @author Cynick Young
  * @author Laurel Williams
  */
-public interface User extends Persistable {
+public interface User extends Persistable, Comparable<User> {
 
-    String CURRENT_USER_SESSION_KEY = "CURRENT_USER";
+  String CURRENT_USER_SESSION_KEY = "CURRENT_USER";
 
-    Long getId();
+  Long getId();
 
-    /**
-     * Gets the UserDetails object.
-     * 
-     * @return the userDetails
-     */
-    MutableUserDetails getUserDetails();
+  void setId(Long id);
 
-    /**
-     * Sets the UserDetails object
-     * 
-     * @param userDetails
-     *            the userDetails to set
-     */
-    void setUserDetails(MutableUserDetails userDetails);
+  MutableUserDetails getUserDetails();
 
-    /**
-     * Returns true if this use is an admin, false otherwise.
-     * 
-     * @return boolean
-     */
-    boolean isAdmin();
+  void setUserDetails(MutableUserDetails userDetails);
 
-    /**
-     * Returns true if this use is an student, false otherwise.
-     *
-     * @return boolean
-     */
-    boolean isStudent();
+  boolean isAdmin();
 
-    /**
-     * Returns true if this use is a trusted author, false otherwise
-     * 
-     * @return boolean
-     */
-    boolean isTrustedAuthor();
+  boolean isResearcher();
+
+  boolean isStudent();
+
+  boolean isTeacher();
+
+  boolean isTrustedAuthor();
 }

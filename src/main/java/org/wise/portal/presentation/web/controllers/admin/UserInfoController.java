@@ -1,21 +1,21 @@
 /**
- * Copyright (c) 2007-2015 Regents of the University of California (Regents).
+ * Copyright (c) 2007-2018 Regents of the University of California (Regents).
  * Created by WISE, Graduate School of Education, University of California, Berkeley.
- * 
+ *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
  * the following two paragraphs appear in all copies of this software.
- * 
+ *
  * REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE. THE SOFTWARE AND ACCOMPANYING DOCUMENTATION, IF ANY, PROVIDED
  * HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
  * MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
- * 
+ *
  * IN NO EVENT SHALL REGENTS BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
  * SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS,
  * ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
@@ -24,91 +24,59 @@
 package org.wise.portal.presentation.web.controllers.admin;
 
 import java.util.HashMap;
-import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.servlet.ModelAndView;
-import org.springframework.web.servlet.view.RedirectView;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.wise.portal.domain.authentication.MutableUserDetails;
-import org.wise.portal.domain.run.Run;
 import org.wise.portal.domain.user.User;
-import org.wise.portal.presentation.web.controllers.ControllerUtil;
 import org.wise.portal.service.authentication.UserDetailsService;
-import org.wise.portal.service.offering.RunService;
+import org.wise.portal.service.run.RunService;
 import org.wise.portal.service.student.StudentService;
 import org.wise.portal.service.user.UserService;
 
 /**
- * Controller for displaying user information
+ * Controller for displaying user information to admin users
+ * and student information to their teachers
  * @author Sally Ahn
  */
 @Controller
 public class UserInfoController {
-	
-	@Autowired
-	private UserService userService;
-	
-	@Autowired
-	private StudentService studentService;
-	
-	@Autowired
-	private RunService runService;
 
-	protected final static String USER_INFO_MAP = "userInfoMap";
-	
-	@RequestMapping(value = {"/student/account/info", "/teacher/account/info"})
-	protected ModelAndView handleRequestInternal(
-			HttpServletRequest servletRequest) throws Exception {
-		User signedInUser = ControllerUtil.getSignedInUser();
-		String userName = (String) servletRequest.getParameter("userName");
-		User infoUser = this.userService.retrieveUserByUsername(userName);
-		
-		if (signedInUser.getUserDetails().hasGrantedAuthority(UserDetailsService.ADMIN_ROLE) ||
-				this.studentService.isStudentAssociatedWithTeacher(infoUser, signedInUser)) {
-			MutableUserDetails userDetails = (MutableUserDetails) infoUser.getUserDetails();
-			ModelAndView modelAndView = new ModelAndView();
-			
-			//get the user info map that maps fields to values such as 'First Name' to 'Spongebob'
-			HashMap<String, Object> userInfo = userDetails.getInfo();
-			
-			//we want the id to be the user id instead of the user details id so we will override it
-			userInfo.put("ID", infoUser.getId());
-			
-			modelAndView.addObject(USER_INFO_MAP, userInfo);
-			
-			if (infoUser.getUserDetails().hasGrantedAuthority(UserDetailsService.STUDENT_ROLE)) {
-				//the user we are looking up is a student
-				modelAndView.addObject("isStudent", true);
-				
-				//get all the runs this student is in
-				List<Run> runList = runService.getRunList(infoUser);
-				
-				//set the run list into the model
-				modelAndView.addObject("runList", runList);
-				
-				modelAndView.setViewName("student/account/info");
-			} else {
-				//the user we are looking up is a teacher
-				modelAndView.addObject("isStudent", false);
-				
-				//get all the runs that this teacher owns
-				List<Run> runListByOwner = runService.getRunListByOwner(infoUser);
+  @Autowired
+  private UserService userService;
 
-				//set the run list into the model
-				modelAndView.addObject("runList", runListByOwner);
+  @Autowired
+  private StudentService studentService;
 
-				modelAndView.setViewName("teacher/account/info");
-			}
-			
-	        return modelAndView;
-		} else {
-			//get the context path e.g. /wise
-			String contextPath = servletRequest.getContextPath();
-			return new ModelAndView(new RedirectView(contextPath + "/accessdenied.html"));
-		}
+  @Autowired
+  private RunService runService;
+
+  @GetMapping(value = {"/student/account/info", "/teacher/account/info"})
+  protected String getUserAccountInfo(Authentication auth, @RequestParam String username,
+      ModelMap modelMap) throws Exception {
+    User signedInUser = userService.retrieveUserByUsername(auth.getName());
+    User user = userService.retrieveUserByUsername(username);
+    if (signedInUser.isAdmin() ||
+        studentService.isStudentAssociatedWithTeacher(user, signedInUser)) {
+      MutableUserDetails userDetails = (MutableUserDetails) user.getUserDetails();
+      HashMap<String, Object> userInfoMap = userDetails.getInfo();
+      userInfoMap.put("ID", user.getId());
+      modelMap.put("userInfoMap", userInfoMap);
+      if (user.getUserDetails().hasGrantedAuthority(UserDetailsService.STUDENT_ROLE)) {
+        modelMap.put("isStudent", true);
+        modelMap.put("runList", runService.getRunList(user));
+        return "student/account/info";
+      } else {
+        modelMap.put("isStudent", false);
+        modelMap.put("runList", runService.getRunListByOwner(user));
+        return "teacher/account/info";
+      }
+    } else {
+      return "errors/accessdenied";
     }
+  }
 }

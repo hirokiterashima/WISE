@@ -1,21 +1,21 @@
 /**
- * Copyright (c) 2007-2015 Regents of the University of California (Regents).
+ * Copyright (c) 2007-2017 Regents of the University of California (Regents).
  * Created by WISE, Graduate School of Education, University of California, Berkeley.
- * 
+ *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
  * the following two paragraphs appear in all copies of this software.
- * 
+ *
  * REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE. THE SOFTWARE AND ACCOMPANYING DOCUMENTATION, IF ANY, PROVIDED
  * HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
  * MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
- * 
+ *
  * IN NO EVENT SHALL REGENTS BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
  * SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS,
  * ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
@@ -23,723 +23,456 @@
  */
 package org.wise.portal.domain.run.impl;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import javax.persistence.Transient;
-
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.SortNatural;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.wise.portal.domain.PeriodNotFoundException;
-import org.wise.portal.domain.announcement.Announcement;
-import org.wise.portal.domain.announcement.impl.AnnouncementImpl;
 import org.wise.portal.domain.attendance.StudentAttendance;
 import org.wise.portal.domain.authentication.MutableUserDetails;
 import org.wise.portal.domain.group.Group;
 import org.wise.portal.domain.group.impl.PersistentGroup;
 import org.wise.portal.domain.project.Project;
 import org.wise.portal.domain.project.impl.ProjectImpl;
-import org.wise.portal.domain.run.OfferingVisitor;
 import org.wise.portal.domain.run.Run;
 import org.wise.portal.domain.user.User;
 import org.wise.portal.domain.user.impl.UserImpl;
 
+import javax.persistence.*;
+import java.util.*;
+
 /**
- * WISE "run" domain object A WISE run is an offering with more information,
- * such as starttime, stoptime, runcode
- * 
+ * WISE "run" domain object A WISE run is an run with more information, such as starttime, stoptime,
+ * runcode
+ *
  * @author Hiroki Terashima
  */
 @Entity
 @Table(name = RunImpl.DATA_STORE_NAME)
-public class RunImpl extends OfferingImpl implements Run {
+public class RunImpl implements Run {
 
-    @Transient
-    public static final String DATA_STORE_NAME = "runs";
+  @Transient
+  public static final String DATA_STORE_NAME = "runs";
 
-    @Transient
-    public static final String COLUMN_NAME_STARTTIME = "start_time";
+  @Transient
+  public static final String COLUMN_NAME_STARTTIME = "start_time";
 
-    @Transient
-    public static final String COLUMN_NAME_ENDTIME = "end_time";
+  @Transient
+  public static final String COLUMN_NAME_ENDTIME = "end_time";
 
-    @Transient
-    public static final String COLUMN_NAME_RUN_CODE = "run_code";
-    
-    @Transient
-    public static final String COLUMN_NAME_ARCHIVE_REMINDER_TIME = "archive_reminder";
-    
-    @Transient
-    public static final String PERIODS_JOIN_TABLE_NAME = "runs_related_to_groups";
-    
-    @Transient
-    public static final String PERIODS_JOIN_COLUMN_NAME = "groups_fk";
-  
-    @Transient
-    public static final String RUNS_JOIN_COLUMN_NAME = "runs_fk";
+  @Transient
+  public static final String COLUMN_NAME_RUN_CODE = "run_code";
 
-    @Transient
-	private static final String PROJECTS_JOIN_COLUMN_NAME = "project_fk";
+  @Transient
+  public static final String COLUMN_NAME_ARCHIVE_REMINDER_TIME = "archive_reminder";
 
-	@Transient
-	private static final String OWNER_COLUMN_NAME = "owner_fk";
+  @Transient
+  public static final String PERIODS_JOIN_TABLE_NAME = "runs_related_to_groups";
 
-    @Transient
-    public static final String SHARED_OWNERS_JOIN_TABLE_NAME = "runs_related_to_shared_owners";
-    
-    @Transient
-    public static final String SHARED_OWNERS_JOIN_COLUMN_NAME = "shared_owners_fk";
-    
-    @Transient
-    public static final String ANNOUNCEMENTS_JOIN_TABLE_NAME = "runs_related_to_announcements";
-    
-    @Transient
-    public static final String ANNOUNCEMENTS_JOIN_COLUMN_NAME = "announcements_fk";
+  @Transient
+  public static final String PERIODS_JOIN_COLUMN_NAME = "groups_fk";
 
-    @Transient
-    public static final long serialVersionUID = 1L;
+  @Transient
+  public static final String RUNS_JOIN_COLUMN_NAME = "runs_fk";
 
-    @Transient
-	private static final String COLUMN_NAME_RUNNAME = "name";
+  @Transient
+  private static final String PROJECTS_JOIN_COLUMN_NAME = "project_fk";
 
-    @Transient
-	private static final String COLUMN_NAME_INFO = "info";
+  @Transient
+  private static final String OWNER_COLUMN_NAME = "owner_fk";
 
-    @Transient
-	private static final String COLUMN_NAME_EXTRAS = "extras";
-    
-    @Transient
-    private static final String COLUMN_NAME_MAX_WORKGROUP_SIZE = "maxWorkgroupSize";
-    
-    @Transient
-    private static final String COLUMN_NAME_LOGGING_LEVEL = "loggingLevel";
-    
-    @Transient
-    private static final String COLUMN_NAME_POST_LEVEL = "postLevel";
-    
-    @Transient
-    private static final String COLUMN_NAME_LAST_RUN = "lastRun";
-    
-    @Transient
-    private static final String COLUMN_NAME_TIMES_RUN = "timesRun";
-    
-    @Transient
-    private static final String COLUMN_NAME_VERSION_ID = "versionId";
+  @Transient
+  public static final String SHARED_OWNERS_JOIN_TABLE_NAME = "runs_related_to_shared_owners";
 
-    @Transient
-    private static final String COLUMN_NAME_PRIVATE_NOTES = "private_notes";
-    
-    @Transient
-    private static final String COLUMN_NAME_SURVEY = "survey";
+  @Transient
+  public static final String SHARED_OWNERS_JOIN_COLUMN_NAME = "shared_owners_fk";
 
-    @Column(name = RunImpl.COLUMN_NAME_LAST_RUN)
-    private Date lastRun;
-    
-    @Column(name = RunImpl.COLUMN_NAME_TIMES_RUN)
-    private Integer timesRun;
+  @Transient
+  public static final long serialVersionUID = 1L;
 
-    @Column(name = RunImpl.COLUMN_NAME_STARTTIME, nullable = false)
-    private Date starttime;
+  @Transient
+  private static final String COLUMN_NAME_RUNNAME = "name";
 
-    @Column(name = RunImpl.COLUMN_NAME_ENDTIME)
-    private Date endtime;
+  @Transient
+  private static final String COLUMN_NAME_INFO = "info";
 
-    @Column(name = RunImpl.COLUMN_NAME_RUN_CODE, nullable = false, unique = true)
-    private String runcode;
-    
-    @Column(name = RunImpl.COLUMN_NAME_ARCHIVE_REMINDER_TIME, nullable = false)
-    private Date archiveReminderTime;
+  @Transient
+  private static final String COLUMN_NAME_EXTRAS = "extras";
 
-	@OneToMany(targetEntity = PersistentGroup.class, fetch = FetchType.LAZY)
-    @JoinTable(name = PERIODS_JOIN_TABLE_NAME, joinColumns = { @JoinColumn(name = RUNS_JOIN_COLUMN_NAME, nullable = false) }, inverseJoinColumns = @JoinColumn(name = PERIODS_JOIN_COLUMN_NAME, nullable = false))
-	@SortNatural
-    private Set<Group> periods = new TreeSet<Group>();
+  @Transient
+  private static final String COLUMN_NAME_MAX_WORKGROUP_SIZE = "maxWorkgroupSize";
 
-	@ManyToOne(targetEntity = UserImpl.class, fetch = FetchType.LAZY)
-	@JoinColumn(name = OWNER_COLUMN_NAME, nullable = false, unique = false)
-	private User owner;
+  @Transient
+  private static final String COLUMN_NAME_LOGGING_LEVEL = "loggingLevel";
 
-    @ManyToOne(targetEntity = ProjectImpl.class, fetch = FetchType.LAZY)
-    @JoinColumn(name = PROJECTS_JOIN_COLUMN_NAME, nullable = false, unique = false)
-    private Project project;
-    
-    @ManyToMany(targetEntity = UserImpl.class, fetch = FetchType.LAZY)
-    @JoinTable(name = SHARED_OWNERS_JOIN_TABLE_NAME, joinColumns = { @JoinColumn(name =  RUNS_JOIN_COLUMN_NAME, nullable = false) }, inverseJoinColumns = @JoinColumn(name = SHARED_OWNERS_JOIN_COLUMN_NAME, nullable = false))
-    private Set<User> sharedowners = new TreeSet<User>();
-  
-    @OneToMany(targetEntity = AnnouncementImpl.class, fetch = FetchType.LAZY)
-    @JoinTable(name = ANNOUNCEMENTS_JOIN_TABLE_NAME, joinColumns = { @JoinColumn(name = RUNS_JOIN_COLUMN_NAME, nullable = false) }, inverseJoinColumns = @JoinColumn(name = ANNOUNCEMENTS_JOIN_COLUMN_NAME, nullable = false))
-	@SortNatural
-    private Set<Announcement> announcements = new TreeSet<Announcement>();
-    
-    @Column(name = COLUMN_NAME_RUNNAME)
-    private String name;
+  @Transient
+  private static final String COLUMN_NAME_POST_LEVEL = "postLevel";
 
-    @Column(name = COLUMN_NAME_INFO)
-    private String info;   // other info pertaining to the run
-    
-    @Column(name = COLUMN_NAME_MAX_WORKGROUP_SIZE, nullable = true)
-    private Integer maxWorkgroupSize;
+  @Transient
+  private static final String COLUMN_NAME_LAST_RUN = "lastRun";
 
-    @Column(name = COLUMN_NAME_EXTRAS, length=5120000, columnDefinition = "mediumtext")
-    private String extras;
+  @Transient
+  private static final String COLUMN_NAME_TIMES_RUN = "timesRun";
 
-    @Transient
-    private List<StudentAttendance> studentAttendance;
-    
-    @Column(name = RunImpl.COLUMN_NAME_LOGGING_LEVEL)
-    private Integer loggingLevel;
-    
-    @Column(name = RunImpl.COLUMN_NAME_POST_LEVEL, nullable = false)
-    private Integer postLevel;
-    
-    @Column(name = RunImpl.COLUMN_NAME_VERSION_ID)
-    private String versionId;
-    
-	@Column(name = COLUMN_NAME_PRIVATE_NOTES, length = 32768, columnDefinition = "text")
-	private String privateNotes;   // text (blob) 2^15
+  @Transient
+  private static final String COLUMN_NAME_VERSION_ID = "versionId";
 
-	@Column(name = COLUMN_NAME_SURVEY, length = 32768, columnDefinition = "text")
-	private String survey;   // text (blob) 2^15
+  @Transient
+  private static final String COLUMN_NAME_PRIVATE_NOTES = "private_notes";
 
-    /**
-     * @return the endtime
-     */
-    public Date getEndtime() {
-        return endtime;
+  @Transient
+  private static final String COLUMN_NAME_SURVEY = "survey";
+
+  @Transient
+  private static final String COLUMN_NAME_IS_LOCKED_AFTER_END_DATE = "isLockedAfterEndDate";
+
+  @Id
+  @Getter
+  @Setter
+  private Long id = null;
+
+  @Column(name = RunImpl.COLUMN_NAME_LAST_RUN)
+  @Getter
+  @Setter
+  private Date lastRun;
+
+  @Column(name = RunImpl.COLUMN_NAME_TIMES_RUN)
+  @Getter
+  @Setter
+  private Integer timesRun;
+
+  @Column(name = RunImpl.COLUMN_NAME_STARTTIME, nullable = false)
+  @Getter
+  @Setter
+  private Date starttime;
+
+  @Column(name = RunImpl.COLUMN_NAME_ENDTIME)
+  @Getter
+  @Setter
+  private Date endtime;
+
+  @Column(name = RunImpl.COLUMN_NAME_RUN_CODE, nullable = false, unique = true)
+  @Getter
+  @Setter
+  private String runcode;
+
+  @Column(name = RunImpl.COLUMN_NAME_ARCHIVE_REMINDER_TIME, nullable = false)
+  @Getter
+  @Setter
+  private Date archiveReminderTime;
+
+  @OneToMany(targetEntity = PersistentGroup.class, fetch = FetchType.LAZY)
+  @JoinTable(name = PERIODS_JOIN_TABLE_NAME, joinColumns = {
+      @JoinColumn(name = RUNS_JOIN_COLUMN_NAME, nullable = false) }, inverseJoinColumns = @JoinColumn(name = PERIODS_JOIN_COLUMN_NAME, nullable = false))
+  @SortNatural
+  @Getter
+  @Setter
+  private Set<Group> periods = new TreeSet<Group>();
+
+  @ManyToOne(targetEntity = UserImpl.class, fetch = FetchType.LAZY)
+  @JoinColumn(name = OWNER_COLUMN_NAME, nullable = false, unique = false)
+  @Getter
+  @Setter
+  private User owner;
+
+  @ManyToOne(targetEntity = ProjectImpl.class, fetch = FetchType.LAZY)
+  @JoinColumn(name = PROJECTS_JOIN_COLUMN_NAME, nullable = false, unique = false)
+  @Getter
+  @Setter
+  private Project project;
+
+  @ManyToMany(targetEntity = UserImpl.class, fetch = FetchType.LAZY)
+  @JoinTable(name = SHARED_OWNERS_JOIN_TABLE_NAME, joinColumns = {
+      @JoinColumn(name = RUNS_JOIN_COLUMN_NAME, nullable = false) }, inverseJoinColumns = @JoinColumn(name = SHARED_OWNERS_JOIN_COLUMN_NAME, nullable = false))
+  @Getter
+  @Setter
+  private Set<User> sharedowners = new TreeSet<User>();
+
+  @Column(name = COLUMN_NAME_RUNNAME)
+  @Getter
+  @Setter
+  private String name;
+
+  @Column(name = COLUMN_NAME_INFO)
+  @Getter
+  @Setter
+  private String info; // other info pertaining to the run
+
+  @Column(name = COLUMN_NAME_MAX_WORKGROUP_SIZE, nullable = true)
+  @Getter
+  @Setter
+  private Integer maxWorkgroupSize;
+
+  @Column(name = COLUMN_NAME_EXTRAS, length = 5120000, columnDefinition = "mediumtext")
+  @Getter
+  @Setter
+  private String extras;
+
+  @Transient
+  @Getter
+  @Setter
+  private List<StudentAttendance> studentAttendance;
+
+  @Column(name = RunImpl.COLUMN_NAME_LOGGING_LEVEL)
+  @Getter
+  @Setter
+  private Integer loggingLevel;
+
+  @Column(name = RunImpl.COLUMN_NAME_POST_LEVEL, nullable = false)
+  @Getter
+  @Setter
+  private Integer postLevel;
+
+  @Column(name = RunImpl.COLUMN_NAME_VERSION_ID)
+  @Getter
+  @Setter
+  private String versionId;
+
+  @Column(name = COLUMN_NAME_PRIVATE_NOTES, length = 32768, columnDefinition = "text")
+  @Getter
+  @Setter
+  private String privateNotes; // text (blob) 2^15
+
+  @Column(name = COLUMN_NAME_SURVEY, length = 32768, columnDefinition = "text")
+  @Getter
+  @Setter
+  private String survey; // text (blob) 2^15
+
+  @Column(name = RunImpl.COLUMN_NAME_IS_LOCKED_AFTER_END_DATE, nullable = true)
+  protected boolean isLockedAfterEndDate;
+
+  public Group getPeriodByName(String periodName) throws PeriodNotFoundException {
+    Set<Group> periods = getPeriods();
+    for (Group period : periods) {
+      if (period.getName().equals(periodName)) {
+        return period;
+      }
     }
+    throw new PeriodNotFoundException("Period " + periodName + " does not exist");
+  }
 
-    /**
-     * @param endtime
-     *            the endtime to set
-     */
-    public void setEndtime(Date endtime) {
-        this.endtime = endtime;
+  public boolean isEnded() {
+    return this.endtime != null && this.endtime.before(Calendar.getInstance().getTime());
+  }
+
+  public boolean isStudentAssociatedToThisRun(User studentUser) {
+    return getPeriodOfStudent(studentUser) != null;
+  }
+
+  public Group getPeriodOfStudent(User studentUser) {
+    for (Group period : getPeriods()) {
+      if (period.getMembers().contains(studentUser)) {
+        return period;
+      }
     }
+    return null;
+  }
 
-    /**
-     * @return the starttime
-     */
-    public Date getStarttime() {
-        return starttime;
+  public boolean isOwner(User user) {
+    User owner = getOwner();
+    return user.getId() == owner.getId();
+  }
+
+  public boolean isTeacherAssociatedToThisRun(User teacherUser) {
+    User owner = getOwner();
+    Set<User> sharedOwners = getSharedowners();
+    return owner.equals(teacherUser) || sharedOwners.contains(teacherUser);
+  }
+
+  public List<User> getSharedOwnersOrderedAlphabetically() {
+    List<User> sharedOwnersList = new ArrayList<User>();
+    sharedOwnersList.addAll(sharedowners);
+    UserAlphabeticalComparator userAlphabeticalComparator = new UserAlphabeticalComparator();
+    Collections.sort(sharedOwnersList, userAlphabeticalComparator);
+    return sharedOwnersList;
+  }
+
+  public boolean isPaused() {
+    if (this.info != null) {
+      int start = this.info.indexOf("<isPaused>");
+      if (start >= 0) {
+        int end = this.info.indexOf("</isPaused>");
+        String isPausedStr = this.info.substring(start + 10, end);
+        System.out.println(isPausedStr);
+        return new Boolean(isPausedStr).booleanValue();
+      }
     }
+    return false;
+  }
 
-    /**
-     * @param starttime
-     *            the starttime to set
-     */
-    public void setStarttime(Date starttime) {
-        this.starttime = starttime;
+  public boolean isRealTimeEnabled() {
+    String runInfoStr = this.getInfo();
+    if (runInfoStr != null && runInfoStr != null) {
+      try {
+        JSONObject runInfo = new JSONObject(runInfoStr);
+        if (runInfo.has("isRealTimeEnabled")) {
+          return runInfo.getBoolean("isRealTimeEnabled");
+        }
+      } catch (JSONException e) {
+        e.printStackTrace();
+        return false;
+      }
     }
+    return false;
+  }
 
-    /**
-     * @return the runcode
-     */
-    public String getRuncode() {
-        return runcode;
+  public void setRealTimeEnabled(boolean isRealTimeEnabled) {
+    String runInfoStr = this.getInfo();
+    JSONObject runInfo = null;
+    try {
+      if (runInfoStr != null && runInfoStr != null) {
+        runInfo = new JSONObject(runInfoStr);
+      } else {
+        runInfo = new JSONObject();
+      }
+      runInfo.put("isRealTimeEnabled", isRealTimeEnabled);
+      this.setInfo(runInfo.toString());
+    } catch (JSONException e) {
+      e.printStackTrace();
     }
+  }
 
-    /**
-     * @param runcode
-     *            the runcode to set
-     */
-    public void setRuncode(String runcode) {
-        this.runcode = runcode;
+  public boolean isIdeaManagerEnabled() {
+    String runInfoStr = this.getInfo();
+    if (runInfoStr != null && runInfoStr != null) {
+      try {
+        JSONObject runInfo = new JSONObject(runInfoStr);
+        if (runInfo.has("isIdeaManagerEnabled")) {
+          return runInfo.getBoolean("isIdeaManagerEnabled");
+        }
+      } catch (JSONException e) {
+        e.printStackTrace();
+        return false;
+      }
     }
+    return false;
+  }
 
-	/**
-	 * @return the periods
-	 */
-	public Set<Group> getPeriods() {
-		return periods;
-	}
+  public boolean isStudentAssetUploaderEnabled() {
+    String runInfoStr = this.getInfo();
+    if (runInfoStr != null && runInfoStr != null) {
+      try {
+        JSONObject runInfo = new JSONObject(runInfoStr);
+        if (runInfo.has("isStudentAssetUploaderEnabled")) {
+          return runInfo.getBoolean("isStudentAssetUploaderEnabled");
+        }
+      } catch (JSONException e) {
+        e.printStackTrace();
+        return false;
+      }
+    }
+    return false;
+  }
 
-	/**
-	 * @param periods the periods to set
-	 */
-	public void setPeriods(Set<Group> periods) {
-		this.periods = periods;
-	}
+  public void setIdeaManagerEnabled(boolean isIdeaManagerEnabled) {
+    String runInfoStr = this.getInfo();
+    JSONObject runInfo = null;
+    try {
+      if (runInfoStr != null && runInfoStr != null) {
+        runInfo = new JSONObject(runInfoStr);
+      } else {
+        runInfo = new JSONObject();
+      }
+      runInfo.put("isIdeaManagerEnabled", isIdeaManagerEnabled);
+      this.setInfo(runInfo.toString());
+    } catch (JSONException e) {
+      e.printStackTrace();
+    }
+  }
 
-	/**
-	 * @return User who owns this run
-	 */
-	public User getOwner() {
-		return owner;
-	}
+  public void setStudentAssetUploaderEnabled(boolean isStudentAssetUploaderEnabled) {
+    String runInfoStr = this.getInfo();
+    JSONObject runInfo = null;
+    try {
+      if (runInfoStr != null && runInfoStr != null) {
+        runInfo = new JSONObject(runInfoStr);
+      } else {
+        runInfo = new JSONObject();
+      }
+      runInfo.put("isStudentAssetUploaderEnabled", isStudentAssetUploaderEnabled);
+      this.setInfo(runInfo.toString());
+    } catch (JSONException e) {
+      e.printStackTrace();
+    }
+  }
 
-	/**
-	 * @param owner User who owns this run
-	 */
-	public void setOwner(User owner) {
-		this.owner = owner;
-	}
+  public Long getStartTimeMilliseconds() {
+    return this.starttime.getTime();
+  }
 
-	/**
-	 * @see org.wise.portal.domain.run.Run#getProject()
-	 */
-	public Project getProject() {
-		return project;
-	}
+  public Long getEndTimeMilliseconds() {
+    if (this.endtime == null) {
+      return null;
+    } else {
+      return this.endtime.getTime();
+    }
+  }
 
-	/**
-	 * @see org.wise.portal.domain.run.Run#setProject(org.wise.portal.domain.project.Project)
-	 */
-	public void setProject(Project project) {
-		this.project = project;
-	}
-	
-	/**
-	 * @see org.wise.portal.domain.run.Run#getPeriodByName(java.lang.String)
-	 */
-	public Group getPeriodByName(String periodName) throws PeriodNotFoundException {
-		Set<Group> periods = getPeriods();
-		for (Group period : periods) {
-			if (period.getName().equals(periodName)) {
-				return period;
-			}
-		}
-		throw new PeriodNotFoundException("Period " + periodName + 
-				" does not exist");
-	}
+  public int getNumStudents() {
+    int numStudents = 0;
+    for (Group period : periods) {
+      Set<User> members = period.getMembers();
+      numStudents += members.size();
+    }
+    return numStudents;
+  }
 
-	/**
-	 * @see org.wise.portal.domain.Run#isEnded()
-	 */
-	public boolean isEnded() {
-		return this.endtime != null;
-	}
-
-	/**
-	 * @see org.wise.portal.domain.Run#isStudentAssociatedToThisRun(User)
-	 */
-	public boolean isStudentAssociatedToThisRun(User studentUser) {
-		return getPeriodOfStudent(studentUser) != null;
-	}
-
-	/**
-	 * @see org.wise.portal.domain.Run#getPeriodOfStudent(User)
-	 */
-	public Group getPeriodOfStudent(User studentUser) {
-		Set<Group> periods = getPeriods();
-		for (Group period : periods) {
-			if (period.getMembers().contains(studentUser)) {
-				return period;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * @see org.wise.portal.domain.Run#getSharedowners()
-	 */
-	public Set<User> getSharedowners() {
-		return sharedowners;
-	}
-	
-	/**
-	 * Get the shared owners in alphabetical order
-	 * @return the shared owners list in alphabetical order
-	 */
-	public List<User> getSharedOwnersOrderedAlphabetically() {
-		List<User> sharedOwnersList = new ArrayList<User>();
-		
-		//get the shared owners in a list
-		sharedOwnersList.addAll(sharedowners);
-		
-		//get the comparator that will order the list alphabetically
-		UserAlphabeticalComparator userAlphabeticalComparator = new UserAlphabeticalComparator();
-		
-		//sort the list alphabetically
-		Collections.sort(sharedOwnersList, userAlphabeticalComparator);
-		
-		return sharedOwnersList;
-	}
-
-	/**
-	 * @see org.wise.portal.domain.Run#setSharedOwners(Set<User>)
-	 */
-	public void setSharedowners(Set<User> sharedOwners) {
-		this.sharedowners = sharedOwners;		
-	}
-
-	/**
-	 * @return the name
-	 */
-	public String getName() {
-		return name;
-	}
-
-	/**
-	 * @param name the name to set
-	 */
-	public void setName(String name) {
-		this.name = name;
-	}
-	
-	/**
-	 * @return the announcements
-	 */
-	public Set<Announcement> getAnnouncements() {
-		return announcements;
-	}
-
-	/**
-	 * @param announcements the announcements to set
-	 */
-	public void setAnnouncements(Set<Announcement> announcements) {
-		this.announcements = announcements;
-	}
+  public static class UserAlphabeticalComparator implements Comparator<User> {
 
     /**
-	 * @return the isPaused
-	 */
-	public boolean isPaused() {
-		if (this.info != null) {
-			int start = this.info.indexOf("<isPaused>");
-			if (start >=0) {
-				int end = this.info.indexOf("</isPaused>");
-				String isPausedStr = this.info.substring(start+10, end);
-				System.out.println(isPausedStr);
-				return new Boolean(isPausedStr).booleanValue();
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * @return the info
-	 */
-	public String getInfo() {
-		return info;
-	}
-
-	/**
-	 * @param info the info to set
-	 */
-	public void setInfo(String info) {
-		this.info = info;
-	}
-	
-	/**
-	 * @return <code>Integer</code> maxWorkgroupSize
-	 */
-	public Integer getMaxWorkgroupSize() {
-		return maxWorkgroupSize;
-	}
-
-	/**
-	 * @param <code>Integer</code> maxWorkgroupSize
-	 */
-	public void setMaxWorkgroupSize(Integer maxWorkgroupSize) {
-		this.maxWorkgroupSize = maxWorkgroupSize;
-	}
-	
-    /**
-     * @see net.sf.sail.webapp.domain.Offering#accept(net.sf.sail.webapp.domain.OfferingVisitor)
+     * Compares the user names of two User objects
+     * 
+     * @param user1
+     *                a user object
+     * @param user2
+     *                a user object
+     * @return -1 if the user1 user names comes before the user2 user name 0 if the user1 user name
+     *         is the same as the user2 user name 1 if the user1 user name comes after the user2
+     *         user name
      */
-	public Object accept(OfferingVisitor visitor) {
-		return visitor.visit(this);
-	}
-	
-	/**
-	 * @see org.wise.portal.domain.Run#getArchiveReminderTime()
-	 */
-	public Date getArchiveReminderTime() {
-		return archiveReminderTime;
-	}
+    @Override
+    public int compare(User user1, User user2) {
+      int result = 0;
 
-	/**
-	 * @see org.wise.portal.domain.Run#setArchiveReminderTime(java.util.Date)
-	 */
-	public void setArchiveReminderTime(Date archiveReminderTime) {
-		this.archiveReminderTime = archiveReminderTime;
-	}
+      if (user1 != null && user2 != null) {
+        MutableUserDetails userDetails1 = user1.getUserDetails();
+        MutableUserDetails userDetails2 = user2.getUserDetails();
+        if (userDetails1 != null && userDetails2 != null) {
+          String username1 = userDetails1.getUsername();
+          String username2 = userDetails2.getUsername();
+          if (username1 != null && username2 != null) {
+            String username1LowerCase = username1.toLowerCase();
+            String username2LowerCase = username2.toLowerCase();
+            result = username1LowerCase.compareTo(username2LowerCase);
+          }
+        }
+      }
+      return result;
+    }
+  }
 
-	/**
-	 * @return the extras
-	 */
-	public String getExtras() {
-		return extras;
-	}
+  public Boolean isActive() {
+    Date currentDate = new Date();
+    if (currentDate.before(this.starttime)) {
+      return false;
+    } else if (this.endtime != null && currentDate.after(this.endtime)
+        && this.isLockedAfterEndDate) {
+      return false;
+    } else {
+      return true;
+    }
+  }
 
-	/**
-	 * @param extras the extras to set
-	 */
-	public void setExtras(String extras) {
-		this.extras = extras;
-	}
+  public boolean isSharedTeacher(User user) {
+    return this.getSharedowners().contains(user);
+  }
 
-	/**
-	 * @return the loggingLevel
-	 */
-	public Integer getLoggingLevel() {
-		return loggingLevel;
-	}
+  public boolean isLockedAfterEndDate() {
+    return isLockedAfterEndDate;
+  }
 
-	/**
-	 * @param loggingLevel the loggingLevel to set
-	 */
-	public void setLoggingLevel(Integer loggingLevel) {
-		this.loggingLevel = loggingLevel;
-	}
-
-	/**
-	 * @return the postLevel
-	 */
-	public Integer getPostLevel() {
-		return postLevel;
-	}
-
-	/**
-	 * @param postLevel the postLevel to set
-	 */
-	public void setPostLevel(Integer postLevel) {
-		this.postLevel = postLevel;
-	}
-
-	public Date getLastRun() {
-		return lastRun;
-	}
-
-	public void setLastRun(Date lastRun) {
-		this.lastRun = lastRun;
-	}
-
-	public Integer getTimesRun() {
-		return timesRun;
-	}
-
-	public void setTimesRun(Integer timesRun) {
-		this.timesRun = timesRun;
-	}
-	
-	/**
-	 * @return the versionId
-	 */
-	public String getVersionId() {
-		return versionId;
-	}
-
-	/**
-	 * @param versionId the versionId to set
-	 */
-	public void setVersionId(String versionId) {
-		this.versionId = versionId;
-	}
-	
-	public boolean isRealTimeEnabled() {
-		String runInfoStr = this.getInfo();
-		if (runInfoStr != null && runInfoStr != null) {
-			try {
-				JSONObject runInfo = new JSONObject(runInfoStr);
-				if (runInfo.has("isRealTimeEnabled")) {
-					return runInfo.getBoolean("isRealTimeEnabled");
-				}
-			} catch (JSONException e) {
-				e.printStackTrace();
-				return false;
-			}
-		}
-		return false;
-	}
-	
-	public void setRealTimeEnabled(boolean isRealTimeEnabled) {
-		String runInfoStr = this.getInfo();
-		JSONObject runInfo = null;
-		try {
-			if (runInfoStr != null && runInfoStr != null) {
-				runInfo = new JSONObject(runInfoStr);
-			} else {
-				runInfo = new JSONObject();
-			}
-			runInfo.put("isRealTimeEnabled", isRealTimeEnabled);
-			this.setInfo(runInfo.toString());
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public boolean isIdeaManagerEnabled() {
-		String runInfoStr = this.getInfo();
-		if (runInfoStr != null && runInfoStr != null) {
-			try {
-				JSONObject runInfo = new JSONObject(runInfoStr);
-				if (runInfo.has("isIdeaManagerEnabled")) {
-					return runInfo.getBoolean("isIdeaManagerEnabled");
-				}
-			} catch (JSONException e) {
-				e.printStackTrace();
-				return false;
-			}
-		}
-		return false;
-	}
-
-	public boolean isStudentAssetUploaderEnabled() {
-		String runInfoStr = this.getInfo();
-		if (runInfoStr != null && runInfoStr != null) {
-			try {
-				JSONObject runInfo = new JSONObject(runInfoStr);
-				if (runInfo.has("isStudentAssetUploaderEnabled")) {
-					return runInfo.getBoolean("isStudentAssetUploaderEnabled");
-				}
-			} catch (JSONException e) {
-				e.printStackTrace();
-				return false;
-			}
-		}
-		return false;
-	}
-
-	public void setIdeaManagerEnabled(boolean isIdeaManagerEnabled) {
-		String runInfoStr = this.getInfo();
-		JSONObject runInfo = null;
-		try {
-			if (runInfoStr != null && runInfoStr != null) {
-				runInfo = new JSONObject(runInfoStr);
-			} else {
-				runInfo = new JSONObject();
-			}
-			runInfo.put("isIdeaManagerEnabled", isIdeaManagerEnabled);
-			this.setInfo(runInfo.toString());
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	public void setPortfolioEnabled(
-			boolean isPortfolioEnabled) {
-		String runInfoStr = this.getInfo();
-		JSONObject runInfo = null;
-		try {
-			if (runInfoStr != null && runInfoStr != null) {
-				runInfo = new JSONObject(runInfoStr);
-			} else {
-				runInfo = new JSONObject();
-			}
-			runInfo.put("isPortfolioEnabled", isPortfolioEnabled);
-			this.setInfo(runInfo.toString());
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public boolean isPortfolioEnabled() {
-		String runInfoStr = this.getInfo();
-		if (runInfoStr != null && runInfoStr != null) {
-			try {
-				JSONObject runInfo = new JSONObject(runInfoStr);
-				if (runInfo.has("isPortfolioEnabled")) {
-					return runInfo.getBoolean("isPortfolioEnabled");
-				}
-			} catch (JSONException e) {
-				e.printStackTrace();
-				return false;
-			}
-		}
-		return false;
-	}
-
-	public void setStudentAssetUploaderEnabled(
-			boolean isStudentAssetUploaderEnabled) {
-		String runInfoStr = this.getInfo();
-		JSONObject runInfo = null;
-		try {
-			if (runInfoStr != null && runInfoStr != null) {
-				runInfo = new JSONObject(runInfoStr);
-			} else {
-				runInfo = new JSONObject();
-			}
-			runInfo.put("isStudentAssetUploaderEnabled", isStudentAssetUploaderEnabled);
-			this.setInfo(runInfo.toString());
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-	}
-
-	@Override
-	public void setStudentAttendance(
-			List<StudentAttendance> studentAttendance) {
-		this.studentAttendance = studentAttendance;
-	}
-
-	@Override
-	public List<StudentAttendance> getStudentAttendance() {
-		return this.studentAttendance;
-	}
-
-	public String getPrivateNotes() {
-		return privateNotes;
-	}
-
-	public void setPrivateNotes(String privateNotes) {
-		this.privateNotes = privateNotes;
-	}
-
-	public String getSurvey() {
-		return survey;
-	}
-
-	public void setSurvey(String survey) {
-		this.survey = survey;
-	}
-	
-	/**
-	 * Comparator used to order user names alphabetically
-	 */
-	public static class UserAlphabeticalComparator implements Comparator<User> {
-		
-		/**
-		 * Compares the user names of two User objects
-		 * @param user1 a user object
-		 * @param user2 a user object
-		 * @return
-		 * -1 if the user1 user names comes before the user2 user name
-		 * 0 if the user1 user name is the same as the user2 user name
-		 * 1 if the user1 user name comes after the user2 user name
-		 */
-		@Override
-		public int compare(User user1, User user2) {
-			int result = 0;
-			
-			if(user1 != null && user2 != null) {
-				//get the user details
-				MutableUserDetails userDetails1 = user1.getUserDetails();
-				MutableUserDetails userDetails2 = user2.getUserDetails();
-				
-				if(userDetails1 != null && userDetails2 != null) {
-					//get the user names
-					String userName1 = userDetails1.getUsername();
-					String userName2 = userDetails2.getUsername();
-					
-					if(userName1 != null && userName2 != null) {
-						//get the user names in lower case
-						String userName1LowerCase = userName1.toLowerCase();
-						String userName2LowerCase = userName2.toLowerCase();
-						
-						//compare the user names
-						result = userName1LowerCase.compareTo(userName2LowerCase);
-					}
-				}
-			}
-			
-			return result;
-		}
-	}
+  public void setLockedAfterEndDate(boolean isLockedAfterEndDate) {
+    this.isLockedAfterEndDate = isLockedAfterEndDate;
+  }
 }

@@ -1,9 +1,9 @@
 /**
- * Copyright (c) 2007-2015 Encore Research Group, University of Toronto
+ * Copyright (c) 2007-2017 Encore Research Group, University of Toronto
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -25,10 +25,9 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.security.authentication.dao.SaltSource;
-import org.springframework.security.authentication.encoding.Md5PasswordEncoder;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.wise.portal.dao.ObjectNotFoundException;
@@ -41,245 +40,292 @@ import org.wise.portal.domain.authentication.impl.StudentUserDetails;
 import org.wise.portal.domain.authentication.impl.TeacherUserDetails;
 import org.wise.portal.domain.user.User;
 import org.wise.portal.domain.user.impl.UserImpl;
+import org.wise.portal.presentation.web.exception.IncorrectPasswordException;
 import org.wise.portal.service.authentication.DuplicateUsernameException;
 import org.wise.portal.service.authentication.UserDetailsService;
 import org.wise.portal.service.user.UserService;
 
 /**
  * Implementation class that uses daos to interact with the data store.
- * 
+ *
  * @author Laurel Williams
+ * @author Hiroki Terashima
  */
 @Service
 public class UserServiceImpl implements UserService {
 
-	@Autowired
-	private UserDetailsDao<MutableUserDetails> userDetailsDao;
+  @Autowired
+  private UserDetailsDao<MutableUserDetails> userDetailsDao;
 
-	@Autowired
-	private GrantedAuthorityDao<MutableGrantedAuthority> grantedAuthorityDao;
+  @Autowired
+  private GrantedAuthorityDao<MutableGrantedAuthority> grantedAuthorityDao;
 
-	@Autowired
-	private UserDao<User> userDao;
+  @Autowired
+  private UserDao<User> userDao;
 
-	@Autowired
-	protected Md5PasswordEncoder passwordEncoder;
+  @Autowired
+  protected PasswordEncoder passwordEncoder;
 
-	@Autowired
-	private SaltSource saltSource;
+  @Transactional(readOnly = true)
+  public User retrieveUser(UserDetails userDetails) {
+    return userDao.retrieveByUserDetails(userDetails);
+  }
 
-	/**
-	 * @see net.sf.sail.webapp.service.UserService#retrieveUser(org.acegisecurity.userdetails.UserDetails)
-	 */
-	@Transactional(readOnly = true)
-	public User retrieveUser(UserDetails userDetails) {
-		return this.userDao.retrieveByUserDetails(userDetails);
-	}
+  @Override
+  public List<User> retrieveDisabledUsers() {
+    return userDao.retrieveDisabledUsers();
+  }
 
-	/**
-	 * @see net.sf.sail.webapp.service.UserService#retrieveUserByUsername(java.lang.String)
-	 */
-	@Transactional(readOnly = true)
-	public List<User> retrieveUsersByUsername(String username) {
-		return retrieveByField("username", "like", "%" + username + "%", "teacherUserDetails");
-	}
-	
+  @Transactional(readOnly = true)
+  public List<User> retrieveUserByEmailAddress(String emailAddress) {
+    return userDao.retrieveByEmailAddress(emailAddress);
+  }
 
-	@Override
-	public List<User> retrieveDisabledUsers() {
-		return this.userDao.retrieveDisabledUsers();
-	}
+  @Transactional(readOnly = true)
+  public User retrieveUserByGoogleUserId(String googleUserId) {
+    return userDao.retrieveByGoogleUserId(googleUserId);
+  }
 
+  @Override
+  @Transactional(rollbackFor = { DuplicateUsernameException.class})
+  public User createUser(final MutableUserDetails userDetails) {
+    MutableUserDetails details = userDetails;
+    if (userDetails instanceof StudentUserDetails) {
+      assignRole(userDetails, UserDetailsService.STUDENT_ROLE);
+    } else if (userDetails instanceof TeacherUserDetails) {
+      assignRole(userDetails, UserDetailsService.TEACHER_ROLE);
+      assignRole(userDetails, UserDetailsService.AUTHOR_ROLE);
+    }
 
-	/**
-	 * @see net.sf.sail.webapp.service.UserService#retrieveUserByEmailAddress(java.lang.String)
-	 */
-	@Transactional(readOnly = true)
-	public List<User> retrieveUserByEmailAddress(String emailAddress) {
-		return this.userDao.retrieveByEmailAddress(emailAddress);
-	}
+    details.setFirstname(details.getFirstname().trim());
+    details.setLastname(details.getLastname().trim());
+    details.setNumberOfLogins(0);
+    details.setSignupdate(Calendar.getInstance().getTime());
 
-	/**
-	 * @throws DuplicateUsernameException 
-	 * @see net.sf.sail.webapp.service.UserService#createUser(net.sf.sail.webapp.domain.authentication.MutableUserDetails)
-	 */
-	@Override
-	@Transactional(rollbackFor = { DuplicateUsernameException.class})
-	public User createUser(final MutableUserDetails userDetails) throws DuplicateUsernameException {
+    String currentUsernameSuffix = null;
+    User createdUser = null;
+    boolean done = false;
 
-		org.wise.portal.domain.authentication.MutableUserDetails details = 
-			(org.wise.portal.domain.authentication.MutableUserDetails) userDetails;
+    while (!done) {
+      try {
+        currentUsernameSuffix = details.getNextUsernameSuffix(currentUsernameSuffix);
+        String coreUsername = details.getCoreUsername();
+        details.setUsername(coreUsername + currentUsernameSuffix);
+        checkUserErrors(userDetails.getUsername());
+        assignRole(userDetails, UserDetailsService.USER_ROLE);
+        encodePassword(userDetails);
 
-		// assign roles
-		if (userDetails instanceof StudentUserDetails) {
-			this.assignRole(userDetails, UserDetailsService.STUDENT_ROLE);
-		} else if (userDetails instanceof TeacherUserDetails) {
-			this.assignRole(userDetails, UserDetailsService.TEACHER_ROLE);
-			this.assignRole(userDetails, UserDetailsService.AUTHOR_ROLE);
-		} 
+        createdUser = new UserImpl();
+        createdUser.setUserDetails(userDetails);
+        userDao.save(createdUser);
+        done = true;
+      } catch (DuplicateUsernameException e) {
+        // the username already exists; try the next possible username
+        continue;
+      }
+    }
+    return createdUser;
+  }
 
-		// trim firstname and lastname so it doesn't contain leading or trailing spaces
-		details.setFirstname(details.getFirstname().trim());
-		details.setLastname(details.getLastname().trim());
-		String coreUsername = details.getCoreUsername();
+  void encodePassword(MutableUserDetails userDetails) {
+    userDetails.setPassword(passwordEncoder.encode(userDetails.getPassword()));
+  }
 
-		details.setNumberOfLogins(0);
-		
-		//set the sign up date
-		details.setSignupdate(Calendar.getInstance().getTime());
-		
-		//the username suffix
-		String currentUsernameSuffix = null;
-		User createdUser = null;
-		boolean done = false;
-		
-		//loop until we have successfully found a unique username
-		while(!done) {
-			try {
-				//get the next username suffix
-				currentUsernameSuffix = details.getNextUsernameSuffix(currentUsernameSuffix);
-				
-				//try to create a user with the given username
-				details.setUsername(coreUsername + currentUsernameSuffix);
-				//createdUser = super.createUser(details);
-				this.checkUserErrors(userDetails.getUsername());
-				this.assignRole(userDetails, UserDetailsService.USER_ROLE);
-				this.encodePassword(userDetails);
+  public void assignRole(MutableUserDetails userDetails, final String role) {
+    GrantedAuthority authority = grantedAuthorityDao.retrieveByName(role);
+    userDetails.addAuthority(authority);
+  }
 
-				createdUser = new UserImpl();
-				createdUser.setUserDetails(userDetails);
-				this.userDao.save(createdUser);
-				
-				//we were able to successfully create a user with the username 
-				done = true;
-			} catch (DuplicateUsernameException e) {
-				//the username is already used so we will try the next possible username
-				continue;
-			} 
-		}
-		
-		return createdUser;
-	}
+  /**
+   * Validates user input checks that the data store does not already contain
+   * a user with the same username
+   *
+   * @param username The username to check for in the data store
+   * @throws DuplicateUsernameException if the username is the same as a username already in data
+   * store.
+   */
+  private void checkUserErrors(final String username) throws DuplicateUsernameException {
+    if (userDetailsDao.hasUsername(username)) {
+      throw new DuplicateUsernameException(username);
+    }
+  }
 
-	void encodePassword(MutableUserDetails userDetails) {
-		userDetails.setPassword(this.passwordEncoder.encodePassword(userDetails
-				.getPassword(), this.saltSource.getSalt(userDetails)));
-	}
+  @Transactional()
+  public User updateUserPassword(User user, String newPassword) {
+    MutableUserDetails userDetails = user.getUserDetails();
+    userDetails.setPassword(newPassword);
+    encodePassword(userDetails);
+    userDao.save(user);
+    return user;
+  }
 
-	protected void assignRole(MutableUserDetails userDetails, final String role) {
-		GrantedAuthority authority = this.grantedAuthorityDao
-				.retrieveByName(role);
-		userDetails.addAuthority(authority);
-	}
+  @Override
+  public User updateUserPassword(User user, String currentPassword, String newPassword)
+      throws IncorrectPasswordException {
+    if (isPasswordCorrect(user, currentPassword)) {
+      return updateUserPassword(user, newPassword);
+    } else {
+      throw new IncorrectPasswordException();
+    }
+  }
 
-	/**
-	 * Validates user input checks that the data store does not already contain
-	 * a user with the same username
-	 * 
-	 * @param username
-	 *            The username to check for in the data store
-	 * @throws DuplicateUsernameException
-	 *             if the username is the same as a username already in data
-	 *             store.
-	 */
-	private void checkUserErrors(final String username)
-			throws DuplicateUsernameException {
-		if (this.userDetailsDao.hasUsername(username)) {
-			throw new DuplicateUsernameException(username);
-		}
-	}
+  public boolean isPasswordCorrect(User user, String password) {
+    return passwordEncoder.matches(password, user.getUserDetails().getPassword());
+  }
 
-	/**
-	 * @see net.sf.sail.webapp.service.UserService#updateUserPassword(net.sf.sail.webapp.domain.User, java.lang.String)
-	 */
-	@Transactional()
-	public User updateUserPassword(User user, String newPassword) {
-		MutableUserDetails userDetails = user.getUserDetails();
-		userDetails.setPassword(newPassword);
-		this.encodePassword(userDetails);
-		this.userDao.save(user);
+  public List<User> retrieveAllUsers() {
+    return userDao.getList();
+  }
 
-		return user;
-	}
+  public List<String> retrieveAllUsernames() {
+    return userDao.retrieveAllUsernames();
+  }
 
-	public List<User> retrieveAllUsers() {
-		return this.userDao.getList();
-	}
+  @Transactional(readOnly = true)
+  public User retrieveById(Long userId) throws ObjectNotFoundException {
+    return userDao.getById(userId);
+  }
 
+  @Transactional
+  public void updateUser(User user) {
+    userDao.save(user);
+  }
 
-	/**
-	 * @see net.sf.sail.webapp.service.UserService#retrieveAllUsernames()
-	 */
-	public List<String> retrieveAllUsernames() {
-		return this.userDao.retrieveAll("userDetails.username");
-	}
-	/**
-	 * @see net.sf.sail.webapp.service.UserService#retrieveById(java.lang.Long)
-	 */
-	@Transactional(readOnly = true)
-	public User retrieveById(Long userId) throws ObjectNotFoundException {
-		return this.userDao.getById(userId);
-	}
+  public User retrieveTeacherById(Long id) {
+    return userDao.retrieveTeacherById(id);
+  }
 
-	@Transactional
-	public void updateUser(User user) {
-		this.userDao.save(user);
-	}
-	
-	/**
-	 * @see net.sf.sail.webapp.service.UserService#retrieveByField(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
-	 */
-	@Transactional()
-	public List<User> retrieveByField(String field, String type, Object term, String classVar){
-		return this.userDao.retrieveByField(field, type, term, classVar);
-	}
-	
-    /**
-     * Given an array of fields and an array of values and classVar, retrieves a list
-     * of Users
-     * @param fields an array of field names
-     * @param values an array of values, the index of a value must line up with
-     * the index in the field array
-     * 
-     * e.g.
-     * fields[0] = "firstname"
-     * fields[1] = "lastname"
-     * 
-     * values[0] = "Spongebob"
-     * values[1] = "Squarepants"
-     * 
-     * @param classVar 'studentUserDetails' or 'teacherUserDetails'
-     * @return a list of Users that have matching values for the given fields
-     */
-	public List<User> retrieveByFields(String[] fields, String[] types, String classVar){
-		return this.userDao.retrieveByFields(fields, types, classVar);
-	}
-	
-	/**
-	 * @see net.sf.sail.webapp.service.UserService#retrieveUserByUsername(java.lang.String)
-	 */
-	@Override
-	public User retrieveUserByUsername(String username) {
-		if (username == null || username.isEmpty()) {
-			return null;
-		}
-		User user = null;
-		try {
-			user =  this.userDao.retrieveByUsername(username);
-		} catch (EmptyResultDataAccessException e) {
-			return null;
-		}
-		return user;
-	}	
-	
-	/**
-	 * Get the User object given the reset password key
-	 * @param resetPasswordKey an alphanumeric string
-	 * @return a User object or null if there is no user with the given reset password key
-	 */
-	@Transactional()
-	public User retrieveByResetPasswordKey(String resetPasswordKey) {
-		return this.userDao.retrieveByResetPasswordKey(resetPasswordKey);
-	}
+  public List<User> retrieveTeachersByFirstName(String firstName) {
+    return userDao.retrieveTeachersByFirstName(firstName);
+  }
 
+  public List<User> retrieveTeachersByLastName(String lastName) {
+    return userDao.retrieveTeachersByLastName(lastName);
+  }
+
+  public User retrieveTeacherByUsername(String username) {
+    return userDao.retrieveTeacherByUsername(username);
+  }
+
+  public List<User> retrieveTeachersByDisplayName(String displayName) {
+    return userDao.retrieveTeachersByDisplayName(displayName);
+  }
+
+  public List<User> retrieveTeachersByCity(String city) {
+    return userDao.retrieveTeachersByCity(city);
+  }
+
+  public List<User> retrieveTeachersByState(String state) {
+    return userDao.retrieveTeachersByState(state);
+  }
+
+  public List<User> retrieveTeachersByCountry(String country) {
+    return userDao.retrieveTeachersByCountry(country);
+  }
+
+  public List<User> retrieveTeachersBySchoolName(String schoolName) {
+    return userDao.retrieveTeachersBySchoolName(schoolName);
+  }
+
+  public List<User> retrieveTeachersBySchoolLevel(String schoolLevel) {
+    return userDao.retrieveTeachersBySchoolLevel(schoolLevel);
+  }
+
+  public List<User> retrieveTeachersByEmail(String email) {
+    return userDao.retrieveTeachersByEmail(email);
+  }
+
+  public User retrieveStudentById(Long id) {
+    return userDao.retrieveStudentById(id);
+  }
+
+  public List<User> retrieveStudentsByFirstName(String firstName) {
+    return userDao.retrieveStudentsByFirstName(firstName);
+  }
+
+  public List<User> retrieveStudentsByLastName(String lastName) {
+    return userDao.retrieveStudentsByLastName(lastName);
+  }
+
+  public User retrieveStudentByUsername(String username) {
+    return userDao.retrieveStudentByUsername(username);
+  }
+
+  public List<User> retrieveStudentsByGender(String gender) {
+    return userDao.retrieveStudentsByGender(gender);
+  }
+
+  @Override
+  public User retrieveUserByUsername(String username) {
+    if (username == null || username.isEmpty()) {
+      return null;
+    }
+    try {
+      return userDao.retrieveByUsername(username);
+    } catch (EmptyResultDataAccessException e) {
+      return null;
+    }
+  }
+
+  @Transactional()
+  public User retrieveByResetPasswordKey(String resetPasswordKey) {
+    return userDao.retrieveByResetPasswordKey(resetPasswordKey);
+  }
+
+  public List<User> retrieveStudentsByNameAndBirthday(String firstName, String lastName,
+      Integer birthMonth, Integer birthDay) {
+    return userDao.retrieveStudentsByNameAndBirthday(firstName, lastName, birthMonth, birthDay);
+  }
+
+  public List<User> retrieveTeachersByName(String firstName, String lastName) {
+    return userDao.retrieveTeachersByName(firstName, lastName);
+  }
+
+  public List<User> retrieveTeacherUsersJoinedSinceYesterday() {
+    return userDao.retrieveTeacherUsersJoinedSinceYesterday();
+  }
+
+  public List<User> retrieveStudentUsersJoinedSinceYesterday() {
+    return userDao.retrieveStudentUsersJoinedSinceYesterday();
+  }
+
+  public List<User> retrieveTeacherUsersWhoLoggedInSinceYesterday() {
+    return userDao.retrieveTeacherUsersWhoLoggedInSinceYesterday();
+  }
+
+  public List<User> retrieveTeacherUsersWhoLoggedInToday() {
+    return userDao.retrieveTeacherUsersWhoLoggedInToday();
+  }
+
+  public List<User> retrieveTeacherUsersWhoLoggedInThisWeek() {
+    return userDao.retrieveTeacherUsersWhoLoggedInThisWeek();
+  }
+
+  public List<User> retrieveTeacherUsersWhoLoggedInThisMonth() {
+    return userDao.retrieveTeacherUsersWhoLoggedInThisMonth();
+  }
+
+  public List<User> retrieveTeacherUsersWhoLoggedInThisYear() {
+    return userDao.retrieveTeacherUsersWhoLoggedInThisYear();
+  }
+
+  public List<User> retrieveStudentUsersWhoLoggedInSinceYesterday() {
+    return userDao.retrieveStudentUsersWhoLoggedInSinceYesterday();
+  }
+
+  public List<User> retrieveStudentUsersWhoLoggedInToday() {
+    return userDao.retrieveStudentUsersWhoLoggedInToday();
+  }
+
+  public List<User> retrieveStudentUsersWhoLoggedInThisWeek() {
+    return userDao.retrieveStudentUsersWhoLoggedInThisWeek();
+  }
+
+  public List<User> retrieveStudentUsersWhoLoggedInThisMonth() {
+    return userDao.retrieveStudentUsersWhoLoggedInThisMonth();
+  }
+
+  public List<User> retrieveStudentUsersWhoLoggedInThisYear() {
+    return userDao.retrieveStudentUsersWhoLoggedInThisYear();
+  }
 }

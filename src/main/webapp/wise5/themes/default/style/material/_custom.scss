@@ -1,3 +1,6 @@
+// Angular Material variables and overrides we want to use in our theme styles
+@import "config";
+
 // Angular Material customizations and additions
 
 // 1. Config
@@ -9,35 +12,6 @@
   box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.4);
 }
 
-// 2. Base
-body {
-    font-size: rem(1.6); // TODO: remove when bootstrap is not being loaded
-}
-
-h1 {
-    font-size: $display-3-font-size-base;
-}
-
-h2 {
-    font-size: $display-2-font-size-base;
-}
-
-h3 {
-    font-size: $display-1-font-size-base;
-}
-
-h4 {
-    font-size: $headline-font-size-base;
-}
-
-h5 {
-    font-size: $title-font-size-base;
-}
-
-h6 {
-    font-size: $subhead-font-size-base;
-}
-
 .md-shadow-bottom-z-1 {
   @include md-shadow-bottom-z-1();
 }
@@ -46,7 +20,7 @@ h6 {
 }
 
 // Rules for sizing material icons
-md-icon {
+mat-icon {
     &.md-18 {
         font-size: 18px;
         width: 18px;
@@ -57,6 +31,12 @@ md-icon {
         font-size: 24px;
         width: 24px;
         height: 24px;
+        min-width: 0;
+    }
+    &.md-30 {
+        font-size: 30px;
+        width: 30px;
+        height: 30px;
         min-width: 0;
     }
     &.md-36 {
@@ -146,6 +126,18 @@ md-list-item {
     }
 }
 
+md-progress-linear {
+    height: 14px;
+
+    .md-container {
+        height: 14px;
+
+        .md-bar {
+            height: 14px;
+        }
+    }
+}
+
 md-input-container {
     &.md-no-float {
         margin-top: 0;
@@ -171,6 +163,12 @@ md-input-container {
     }
 }
 
+md-checkbox {
+  md-dialog-actions & {
+    margin-bottom: 0;
+  }
+}
+
 .md-button {
     padding: 0 8px;
 
@@ -185,16 +183,36 @@ md-input-container {
             &:active {
                 @include md-shadow-bottom-z-2();
             }
+
+            &:not(.md-primary):not(.md-warn):not(.md-accent) {
+                background-color: #ffffff;
+            }
         }
     }
 
-    > md-icon {
-        margin-top: -2px;
+    &:not(.md-icon-button) {
+        > md-icon {
+            margin-top: -2px;
+        }
+    }
+}
+
+md-select {
+    &.md-button.md-no-underline {
+        .md-select-value {
+            padding: 0px 2px 0px;
+            border-bottom-width: 0px;
+        }
     }
 }
 
 md-select-menu md-option[selected] {
     font-weight: 500;
+}
+
+md-optgroup label {
+    padding: 8px 12px;
+    text-transform: none;
 }
 
 md-dialog {
@@ -261,15 +279,52 @@ md-list-item .md-list-item-inner {
 md-select {
     &.md-button {
         text-transform: none;
-        margin: 0;
-        max-width: 200px;
 
-        .md-select-value .md-select-icon {
+        .md-select-value > span {
+            margin-top: 1px;
+        }
+
+        .md-select-icon {
             margin: 0;
         }
 
         &:hover, &:focus {
             background-color: rgba(158,158,158,0.2);
         }
+    }
+}
+
+// hack for now to make autocomplete menu items wrap text instead of hiding overflow
+.md-autocomplete-suggestions {
+    li {
+        overflow: auto;
+        line-height: normal;
+        height: auto;
+        min-height: 48px;
+        white-space: normal;
+
+        // layout-row
+        display: flex;
+        flex-direction: row;
+        box-sizing: border-box;
+        -webkit-box-direction: normal;
+        -webkit-box-orient: horizontal;
+
+        // layout-align="start-center"
+        justify-content: flex-start;
+        align-items: center;
+        align-content: center;
+        max-width: 100%;
+        > * {
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+    }
+}
+
+// md-dialog on top of TinyMCE dialog
+.tox-dialog__disable-scroll {
+    .md-dialog-container {
+        z-index: 1300;
     }
 }

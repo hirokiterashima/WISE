@@ -1,121 +1,279 @@
-"use strict";
+'use strict';
 
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
+class NotebookNotesController {
+  constructor($filter,
+              $rootScope,
+              $scope,
+              NotebookService,
+              ProjectService) {
+    this.$translate = $filter('translate');
+    this.$rootScope = $rootScope;
+    this.NotebookService = NotebookService;
+    this.ProjectService = ProjectService;
+    this.groups = [];
+    this.selectedTabIndex = 0;
+    this.$scope = $scope;
+    this.groupNameToGroup = {};
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+    this.$scope.$on('$destroy', () => {
+      this.ngOnDestroy();
+    });
+  }
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+  ngOnDestroy() {
+    this.unsubscribeAll();
+  }
 
-var NotebookNotesController = function () {
-    function NotebookNotesController($filter, $rootScope) {
-        var _this = this;
+  unsubscribeAll() {
+    this.notebookUpdatedSubscription.unsubscribe();
+    this.openNotebookSubscription.unsubscribe();
+    this.publicNotebookItemsRetrievedSubscription.unsubscribe();
+  }
 
-        _classCallCheck(this, NotebookNotesController);
+  $onInit() {
+    this.color = this.config.itemTypes.note.label.color;
+    const personalGroup = {
+      title: 'Personal',
+      name: 'private',
+      isEditAllowed: true,
+      items: []
+    };
+    this.addPersonalGroupToGroups(personalGroup);
+    const spaces = this.ProjectService.getSpaces();
+    this.addSpacesToGroups(spaces);
+    this.hasNotes = this.isHasNotes();
+    
+    this.notebookUpdatedSubscription = this.NotebookService.notebookUpdated$.subscribe((args) => {
+      const notebookItem = args.notebookItem;
+      if ((notebookItem.groups == null || notebookItem.groups.length === 0) &&
+          notebookItem.type === 'note') {
+        this.updatePrivateNotebookNote(notebookItem);
+      }
+      if (notebookItem.groups != null && notebookItem.groups.includes('public')) {
+        this.updatePublicNotebookNote(notebookItem);
+      }
+    });
 
-        this.$translate = $filter('translate');
-        this.$rootScope = $rootScope;
+    this.openNotebookSubscription = this.NotebookService.openNotebook$.subscribe((args) => {
+      this.selectedTabIndex = args.visibleSpace === 'public' ? 1 : 0;
+    });
+    
+    this.publicNotebookItemsRetrievedSubscription = 
+        this.NotebookService.publicNotebookItemsRetrieved$.subscribe(() => {
+      for (const group of this.groups) {
+        if (group.name !== 'private') {
+          group.items = this.NotebookService.publicNotebookItems[group.name];
+        }
+      }
+    });
+  }
 
-        this.$onChanges = function (changes) {
-            if (changes.notebook) {
-                _this.notebook = angular.copy(changes.notebook.currentValue);
-                _this.hasNotes = Object.keys(_this.notebook.items).length ? true : false;
-            }
-
-            if (changes.insertMode) {
-                if (changes.insertMode.currentValue) {
-                    _this.color = '';
-                } else {
-                    _this.color = _this.config.itemTypes.note.label.color;
-                }
-            }
-        };
+  $onChanges(changes) {
+    if (changes.notebook) {
+      this.notebook = angular.copy(changes.notebook.currentValue);
+      this.hasNotes = this.isHasNotes();
     }
+  }
 
-    _createClass(NotebookNotesController, [{
-        key: 'getTitle',
-        value: function getTitle() {
-            var title = '';
-            if (this.insertMode) {
-                title = this.$translate('selectItemToInsert');
-            } else {
-                title = this.config.itemTypes.note.label.link;
-            }
-            return title;
-        }
-    }, {
-        key: 'getColor',
-        value: function getColor() {
-            var color = '';
-            if (!this.isChooseMode) {
-                color = this.config.itemTypes.note.label.color;
-            }
-            return color;
-        }
-    }, {
-        key: 'deleteItem',
-        value: function deleteItem($ev, $itemId) {
-            var doDelete = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+  isHasNotes() {
+    return Object.keys(this.notebook.items).length ? true : false;
+  }
 
-            this.$rootScope.$broadcast('deleteNote', { itemId: $itemId, ev: $ev });
-        }
-    }, {
-        key: 'reviveItem',
-        value: function reviveItem(ev, itemId) {
-            this.$rootScope.$broadcast('reviveNote', { itemId: $itemId, ev: $ev });
-        }
-    }, {
-        key: 'editItem',
-        value: function editItem($ev, $itemId) {
-            //this.NotebookService.editItem(ev, itemId);
-            this.$rootScope.$broadcast('editNote', { itemId: $itemId, ev: $ev });
-        }
-    }, {
-        key: 'select',
-        value: function select($ev, $itemId) {
-            if (this.insertMode) {
-                this.onInsert({ value: $itemId, event: $ev });
-            } else {
-                this.editItem($ev, $itemId);
-            }
-        }
-    }, {
-        key: 'edit',
-        value: function edit(itemId) {
-            alert("Edit the item: " + itemId);
-        }
-    }, {
-        key: 'close',
-        value: function close($event) {
-            this.onClose($event);
-        }
-    }, {
-        key: 'cancelInsertMode',
-        value: function cancelInsertMode($event) {
-            this.onSetInsertMode({ value: false });
-        }
-    }]);
+  addPersonalGroupToGroups(personalGroup) {
+    this.groupNameToGroup['private'] = personalGroup;
+    for (const [personalItemKey, personalItemValue] of Object.entries(this.notebook.items)) {
+      if (personalItemValue.last().type === 'note') {
+        personalGroup.items.push(personalItemValue.last());
+      }
+    }
+    this.groups.push(personalGroup);
+  }
 
-    return NotebookNotesController;
-}();
+  addSpacesToGroups(spaces) {
+    for (const space of spaces) {
+      if (space.isShowInNotebook) {
+        const spaceGroup = {
+          title: space.name,
+          name: space.id,
+          isEditAllowed: true,
+          items: []
+        };
+        this.groupNameToGroup[space.id] = spaceGroup;
+        this.groups.push(spaceGroup);
+      }
+    }
+  }
 
-NotebookNotesController.$inject = ['$filter', '$rootScope'];
+  updatePrivateNotebookNote(notebookItem) {
+    this.updateNotebookNote(this.groupNameToGroup['private'],
+        notebookItem.localNotebookItemId, notebookItem.workgroupId, notebookItem);
+    if (this.groupNameToGroup['public'] != null) {
+      this.removeNotebookNote(this.groupNameToGroup['public'],
+        notebookItem.localNotebookItemId, notebookItem.workgroupId);
+    }
+  }
 
-var NotebookNotes = {
-    bindings: {
-        config: '<',
-        insertMode: '<',
-        notebook: '<',
-        notesVisible: '<',
-        workgroupId: '<',
-        onClose: '&',
-        onInsert: '&',
-        onSetInsertMode: '&'
-    },
-    template: '<md-sidenav md-component-id="notes"\n                     md-is-open="$ctrl.notesVisible"\n                     md-whiteframe="4"\n                     md-disable-backdrop\n                     layout="column"\n                     class="md-sidenav-right notebook-sidebar">\n            <md-toolbar md-theme="light" class="md-whiteframe-1dp">\n                <div class="md-toolbar-tools notebook-sidebar__header">\n                    <span style="color: {{$ctrl.color}}">{{$ctrl.getTitle()}}</span>\n                    <!--<md-button ng-if="$ctrl.insertMode"\n                               ng-click="$ctrl.cancelInsertMode($event)"\n                               md-theme="default"\n                               class="md-accent button--small"\n                               aria-label="{{ \'Cancel\' | translate }}">\n                        {{ \'Cancel\' | translate }}\n                    </md-button>-->\n                    <span flex></span>\n                    <md-button ng-click="$ctrl.close($event)"\n                               class="md-icon-button"\n                               aria-label="{{ \'Close\' | translate }}">\n                        <md-icon>close</md-icon>\n                    </md-button>\n                </div>\n            </md-toolbar>\n            <md-content>\n                <div class="notebook-items" ng-class="{\'notebook-items--insert\': $ctrl.insertMode}" layout="row" layout-wrap>\n                    <div class="md-padding" ng-if="!$ctrl.hasNotes" translate="noNotes" translate-value-term="{{$ctrl.config.itemTypes.note.label.plural}}"></div>\n                    <notebook-item ng-repeat="(localNotebookItemId, notes) in $ctrl.notebook.items"\n                                 ng-if="notes.last().type === \'note\'"\n                                 config="$ctrl.config"\n                                 item-id="localNotebookItemId"\n                                 is-edit-allowed="!$ctrl.insertMode"\n                                 is-choose-mode="$ctrl.insertMode"\n                                 workgroup-id="$ctrl.workgroupId"\n                                 on-select="$ctrl.select($ev, $itemId)"\n                                 on-delete="$ctrl.deleteItem($ev, $itemId)"\n                                 style="display: flex;"\n                                 flex="100"\n                                 flex-gt-xs="50">\n                    </notebook-item>\n                    <!-- TODO: show deleted items somewhere\n                        <notebook-item ng-repeat="(localNotebookItemId, notes) in $ctrl.notebook.deletedItems"\n                                       ng-if="notes.last().type === \'note\'"\n                                       config="$ctrl.config"\n                                       item-id="localNotebookItemId"\n                                       is-edit-allowed="!$ctrl.insertMode"\n                                       is-choose-mode="$ctrl.insertMode"\n                                       workgroup-id="$ctrl.workgroupId"\n                                       on-select="$ctrl.select($ev, $itemId)"\n                                       on-revive="$ctrl.deleteItem($ev, $itemId)"\n                                       style="display: flex;"\n                                       flex="100"\n                                       flex-gt-xs="50">\n                        </notebook-item>\n                    -->\n                </div> <!-- TODO: add questions when supported -->\n            </md-content>\n        </md-sidenav>',
-    controller: NotebookNotesController
+  updatePublicNotebookNote(notebookItem) {
+    this.updateNotebookNote(this.groupNameToGroup['public'],
+        notebookItem.localNotebookItemId, notebookItem.workgroupId, notebookItem);
+    this.removeNotebookNote(this.groupNameToGroup['private'],
+        notebookItem.localNotebookItemId, notebookItem.workgroupId);
+  }
+
+  updateNotebookNote(group, localNotebookItemId, workgroupId, notebookItem) {
+    let added = false;
+    let items = group.items;
+    for (let i = 0; i < items.length; i++) {
+      let item = items[i];
+      if (item.localNotebookItemId == localNotebookItemId && item.workgroupId == workgroupId) {
+        items[i] = notebookItem;
+        added = true;
+      }
+    }
+    if (!added) {
+      items.push(notebookItem);
+    }
+  }
+
+  removeNotebookNote(group, localNotebookItemId, workgroupId) {
+    let items = group.items;
+    for (let i = 0; i < items.length; i++) {
+      let item = items[i];
+      if (item.localNotebookItemId == localNotebookItemId && item.workgroupId == workgroupId) {
+        items.splice(i, 1);
+        i--;
+      }
+    }
+  }
+
+  getTitle() {
+    if (this.insertMode) {
+      return this.$translate('selectItemToInsert');
+    } else {
+      return this.config.itemTypes.note.label.link;
+    }
+  }
+
+  editItem($ev, note) {
+    this.NotebookService.broadcastEditNote({note: note, isEditMode: !this.viewOnly, ev: $ev});
+  }
+
+  select($ev, note) {
+    if (this.insertMode) {
+      this.onInsert({note: note, event: $ev});
+    } else {
+      this.editItem($ev, note);
+    }
+  }
+
+  close($event) {
+    this.onClose($event);
+  }
+
+  cancelInsertMode($event) {
+    this.onSetInsertMode({value: false});
+  }
+}
+
+NotebookNotesController.$inject = [
+  '$filter',
+  '$rootScope',
+  '$scope',
+  'NotebookService',
+  'ProjectService'
+];
+
+const NotebookNotes = {
+  bindings: {
+    config: '<',
+    insertMode: '<',
+    notebook: '<',
+    notesVisible: '<',
+    viewOnly: '<',
+    workgroupId: '<',
+    onClose: '&',
+    onInsert: '&',
+    onSetInsertMode: '&',
+    mode: '@'
+  },
+  template:
+    `<md-sidenav ng-if="::$ctrl.mode !== 'classroomMonitor'" md-component-id="notes"
+        md-is-open="$ctrl.notesVisible"
+        md-whiteframe="4"
+        md-disable-backdrop
+        layout="column"
+        class="md-sidenav-right notebook-sidebar">
+      <md-toolbar>
+          <div class="md-toolbar-tools"
+               ng-class="{'insert-mode': $ctrl.insertMode}"
+               style="background-color: {{$ctrl.color}};">
+              {{$ctrl.getTitle()}}
+              <span flex></span>
+              <md-button ng-click="$ctrl.close($event)"
+                  class="md-icon-button"
+                  aria-label="{{ ::'Close' | translate }}">
+                <md-icon>close</md-icon>
+              </md-button>
+          </div>
+      </md-toolbar>
+      <md-content>
+      <md-tabs md-selected="$ctrl.selectedTabIndex" md-dynamic-height md-border-bottom md-autoselect 
+               md-swipe-content>
+        <md-tab ng-repeat="group in $ctrl.groups"
+            ng-disabled="::group.disabled"
+            label="{{::group.title}}">
+          <div class="center md-padding">
+              <div class="notebook-items" ng-class="{'notebook-items--insert': $ctrl.insertMode}" layout="row" layout-wrap>
+                <div class="md-padding" ng-if="!$ctrl.hasNotes" translate="noNotes" translate-value-term="{{::$ctrl.config.itemTypes.note.label.plural}}"></div>
+                <notebook-item ng-repeat="note in group.items"
+                    config="$ctrl.config"
+                    group="{{::group.name}}"
+                    item-id="note.localNotebookItemId"
+                    is-edit-allowed="group.isEditAllowed"
+                    is-choose-mode="$ctrl.insertMode"
+                    note="note"
+                    workgroup-id="note.workgroupId"
+                    on-select="$ctrl.select($ev, note)"
+                    style="display: flex;"
+                    flex="100"
+                    flex-gt-xs="50">
+                </notebook-item>
+            </div>
+          </div>
+        </md-tab>
+      </md-tabs>
+      </md-content>
+    </md-sidenav>
+    <div ng-if="::$ctrl.mode === 'classroomMonitor'" md-dynamic-height md-border-bottom md-autoselect md-swipe-content>
+      <div ng-repeat="group in $ctrl.groups"
+          ng-disabled="::group.disabled"
+          label="{{group.title}}">
+        <div ng-if="$ctrl.hasNotes" class="center md-padding">
+          <div class="notebook-items notebook-items--grading" ng-class="{'notebook-items--insert': $ctrl.insertMode}" layout="row" layout-wrap>
+            <notebook-item ng-repeat="note in group.items"
+                config="$ctrl.config"
+                group="{{group.name}}"
+                item-id="note.localNotebookItemId"
+                is-edit-allowed="group.isEditAllowed"
+                is-choose-mode="$ctrl.insertMode"
+                note="note"
+                workgroup-id="note.workgroupId"
+                on-select="$ctrl.select($ev, note)"
+                style="display: flex;"
+                flex="100"
+                flex-gt-xs="50"
+                flex-gt-sm="33"
+                flex-gt-md="25">
+            </notebook-item>
+          </div>
+        </div>
+        <div ng-if="!$ctrl.hasNotes" class="md-padding">
+          <p translate="noNotes" translate-value-term="{{$ctrl.config.itemTypes.note.label.plural}}"></p>
+        </div>
+      </div>
+    </div>
+    `,
+  controller: NotebookNotesController
 };
 
-exports.default = NotebookNotes;
-//# sourceMappingURL=notebookNotes.js.map
+export default NotebookNotes;

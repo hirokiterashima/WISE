@@ -11,6 +11,7 @@ $input-action-vertical-offset-richtext: -7px;
     right: 0;
 
     @media only screen and (min-width: $layout-breakpoint-xs) {
+        padding: 8px;
         padding: 24px 16px;
         margin-bottom: 32px;
     }
@@ -29,10 +30,24 @@ $input-action-vertical-offset-richtext: -7px;
     }
 }
 
+// TODO: use BEM conventions
+
+.node-notice {
+    @media only screen and (min-width: $layout-breakpoint-xs) {
+        margin-top: -8px;
+        margin-bottom: 16px;
+    }
+
+    @media only screen and (min-width: $layout-breakpoint-sm) {
+        margin-top: -16px;
+    }
+}
+
 .node-content {
     padding: 0 0 48px;
     background-color: #ffffff;
     border-radius: $button-border-radius;
+    overflow: visible;
 
     @media only screen and (max-width: $layout-breakpoint-xs - 1) {
         box-shadow: none;
@@ -45,14 +60,38 @@ $input-action-vertical-offset-richtext: -7px;
     }
 }
 
+md-content {
+    &.node-content {
+        background-color: #ffffff;
+    }
+}
+
+.node-content__rubric {
+    position: absolute;
+    top: -22px;
+    left: 0;
+    right: 0;
+    z-index: 1;
+
+    .avatar--icon {
+        transform: scale(0.94);
+
+        @media only screen and (max-width: $layout-breakpoint-xs - 1) {
+            transform: scale(0.8);
+        }
+    }
+}
+
 .node-icon {
-    color: #ffffff !important;
+    color: #ffffff;
+    vertical-align: inherit;
 }
 
 .node-select {
     margin: 0 8px;
     min-width: 0;
     font-weight: 500;
+    font-size: $body-font-size-base;
 
     .md-select-value {
         *:first-child {
@@ -108,10 +147,8 @@ $input-action-vertical-offset-richtext: -7px;
     line-height: 1.2;
     text-transform: none;
     margin-top: 3px;
-}
 
-@media only screen and (max-width: $layout-breakpoint-xs - 1) {
-    .node-title, .node-select {
+    @media only screen and (max-width: $layout-breakpoint-xs - 1) {
         font-size: $body-font-size-base;
     }
 }
@@ -139,8 +176,7 @@ $input-action-vertical-offset-richtext: -7px;
 .node-content__actions__info {
     font-style: italic;
     margin-left: 8px;
-    opacity: 0.8;
-    color: lighten(color('accent-2'), 5%);
+    color: color('text-secondary');
 }
 
 .node-content__actions__more {
@@ -192,4 +228,51 @@ $input-action-vertical-offset-richtext: -7px;
         min-height: 0;
         height: $wise-toolbar-height;
     }
+}
+
+// TODO: move to own sass module file (only gets used by teacher)
+// TODO: use BEM (.node--info)
+.node-info {
+    margin: 0;
+
+    @media only screen and (max-width: $layout-breakpoint-xs - 1) {
+        margin: -16px;
+        border-radius: 0;
+    }
+
+    .divider {
+        margin-left: -8px;
+        margin-right: -8px;
+    }
+
+    .component {
+        &:first-child {
+            margin-top: -16px;
+        }
+    }
+
+    .component, .component__content, .component__header {
+        margin-left: -8px;
+        margin-right: -8px;
+    }
+
+    .component__actions {
+        display: none;
+    }
+}
+
+.node-rubric {
+    border: 2px solid color('primary');
+    margin: 8px 16px 24px;
+    padding: 16px;
+    background-color: #ffffff;
+}
+
+.node-rubric--component {
+
+}
+
+.node__label--vertical-alignment {
+    vertical-align: middle;
+    display: inline-block;
 }

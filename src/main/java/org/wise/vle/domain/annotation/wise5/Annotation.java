@@ -1,13 +1,40 @@
+/**
+ * Copyright (c) 2008-2017 Regents of the University of California (Regents).
+ * Created by WISE, Graduate School of Education, University of California, Berkeley.
+ *
+ * This software is distributed under the GNU General Public License, v3,
+ * or (at your option) any later version.
+ *
+ * Permission is hereby granted, without written agreement and without license
+ * or royalty fees, to use, copy, modify, and distribute this software and its
+ * documentation for any purpose, provided that the above copyright notice and
+ * the following two paragraphs appear in all copies of this software.
+ *
+ * REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE. THE SOFTWARE AND ACCOMPANYING DOCUMENTATION, IF ANY, PROVIDED
+ * HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
+ * MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+ *
+ * IN NO EVENT SHALL REGENTS BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
+ * SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS,
+ * ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
+ * REGENTS HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 package org.wise.vle.domain.annotation.wise5;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import lombok.Getter;
+import lombok.Setter;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.wise.portal.domain.group.Group;
 import org.wise.portal.domain.group.impl.PersistentGroup;
 import org.wise.portal.domain.run.Run;
 import org.wise.portal.domain.run.impl.RunImpl;
-import org.wise.portal.domain.workgroup.WISEWorkgroup;
-import org.wise.portal.domain.workgroup.impl.WISEWorkgroupImpl;
+import org.wise.portal.domain.workgroup.Workgroup;
+import org.wise.portal.domain.workgroup.impl.WorkgroupImpl;
 import org.wise.vle.domain.PersistableDomain;
 import org.wise.vle.domain.work.NotebookItem;
 import org.wise.vle.domain.work.StudentWork;
@@ -16,275 +43,182 @@ import javax.persistence.*;
 import java.sql.Timestamp;
 
 /**
- * WISE5 Annotation Domain Object
- * Annotations are what users annotate on other
- * user's work, such as Comments, Scores, Flags.
+ * WISE5 Annotation Domain Object Annotations are what users annotate on other user's work, such as
+ * Comments, Scores, Flags.
  *
  * @author Hiroki Terashima
  */
 @Entity(name = "wise5Annotation")
-@Table(name = "annotations",  indexes = {
-        @Index(columnList = "runId", name = "runIdIndex"),
-        @Index(columnList = "toWorkgroupId", name = "toWorkgroupIdIndex")})
+@Table(name = "annotations", indexes = {
+    @Index(columnList = "runId", name = "annotationsRunIdIndex"),
+    @Index(columnList = "toWorkgroupId", name = "annotationsToWorkgroupIdIndex") })
+@Getter
+@Setter
 public class Annotation extends PersistableDomain {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Integer id = null;
+  @Id
+  @GeneratedValue(strategy = GenerationType.AUTO)
+  private Integer id = null;
 
-    @ManyToOne(targetEntity = RunImpl.class, cascade = {CascadeType.PERSIST}, fetch = FetchType.LAZY)
-    @JoinColumn(name = "runId", nullable = false)
-    private Run run;
+  @ManyToOne(targetEntity = RunImpl.class, cascade = {
+      CascadeType.PERSIST }, fetch = FetchType.LAZY)
+  @JoinColumn(name = "runId", nullable = false)
+  @JsonIgnore
+  private Run run;
 
-    @ManyToOne(targetEntity = PersistentGroup.class, cascade = {CascadeType.PERSIST}, fetch = FetchType.LAZY)
-    @JoinColumn(name = "periodId", nullable = false)
-    private Group period;
+  @ManyToOne(targetEntity = PersistentGroup.class, cascade = {
+      CascadeType.PERSIST }, fetch = FetchType.LAZY)
+  @JoinColumn(name = "periodId", nullable = false)
+  @JsonIgnore
+  private Group period;
 
-    @ManyToOne(targetEntity = WISEWorkgroupImpl.class, cascade = {CascadeType.PERSIST}, fetch = FetchType.LAZY)
-    @JoinColumn(name = "fromWorkgroupId", nullable = true)
-    private WISEWorkgroup fromWorkgroup;
+  @ManyToOne(targetEntity = WorkgroupImpl.class, cascade = {
+      CascadeType.PERSIST }, fetch = FetchType.LAZY)
+  @JoinColumn(name = "fromWorkgroupId", nullable = true)
+  @JsonIgnore
+  private Workgroup fromWorkgroup;
 
-    @ManyToOne(targetEntity = WISEWorkgroupImpl.class, cascade = {CascadeType.PERSIST}, fetch = FetchType.LAZY)
-    @JoinColumn(name = "toWorkgroupId", nullable = false)
-    private WISEWorkgroup toWorkgroup;
+  @ManyToOne(targetEntity = WorkgroupImpl.class, cascade = {
+      CascadeType.PERSIST }, fetch = FetchType.LAZY)
+  @JoinColumn(name = "toWorkgroupId", nullable = false)
+  @JsonIgnore
+  private Workgroup toWorkgroup;
 
-    @Column(name = "nodeId", length = 30, nullable = true)
-    private String nodeId;
+  @Column(name = "nodeId", length = 30, nullable = true)
+  private String nodeId;
 
-    @Column(name = "componentId", length = 30, nullable = true)
-    private String componentId;
+  @Column(name = "componentId", length = 30, nullable = true)
+  private String componentId;
 
-    @ManyToOne(targetEntity = StudentWork.class, cascade = {CascadeType.PERSIST}, fetch = FetchType.LAZY)
-    @JoinColumn(name = "studentWorkId", nullable = true)
-    private StudentWork studentWork;
+  @ManyToOne(targetEntity = StudentWork.class, cascade = {
+      CascadeType.PERSIST }, fetch = FetchType.LAZY)
+  @JoinColumn(name = "studentWorkId", nullable = true)
+  @JsonIgnore
+  private StudentWork studentWork;
 
-    @Column(name = "localNotebookItemId", length = 30, nullable = true)
-    private String localNotebookItemId;
+  @Column(name = "localNotebookItemId", length = 30, nullable = true)
+  private String localNotebookItemId;
 
-    @ManyToOne(targetEntity = NotebookItem.class, cascade = {CascadeType.PERSIST}, fetch = FetchType.LAZY)
-    @JoinColumn(name = "notebookItemId", nullable = true)
-    private NotebookItem notebookItem;
+  @ManyToOne(targetEntity = NotebookItem.class, cascade = {
+      CascadeType.PERSIST }, fetch = FetchType.LAZY)
+  @JoinColumn(name = "notebookItemId", nullable = true)
+  private NotebookItem notebookItem;
 
-    @Column(name = "type", length = 30, nullable = false)
-    private String type;
+  @Column(name = "type", length = 30, nullable = false)
+  private String type;
 
-    @Column(name = "data", length = 65536, columnDefinition = "text", nullable = false)
-    private String data;
+  @Column(name = "data", length = 65536, columnDefinition = "text", nullable = false)
+  private String data;
 
-    @Column(name = "clientSaveTime", nullable = false)
-    private Timestamp clientSaveTime;
+  @Column(name = "clientSaveTime", nullable = false)
+  private Timestamp clientSaveTime;
 
-    @Column(name = "serverSaveTime", nullable = false)
-    private Timestamp serverSaveTime;
+  @Column(name = "serverSaveTime", nullable = false)
+  private Timestamp serverSaveTime;
 
-    public Timestamp getClientSaveTime() {
-        return clientSaveTime;
+  @Transient
+  private long runId;
+
+  @Transient
+  private long periodId;
+
+  @Transient
+  private long toWorkgroupId;
+
+  @Transient
+  private long fromWorkgroupId;
+
+  @Transient
+  private long studentWorkId;
+
+  @Override
+  protected Class<?> getObjectClass() {
+    return Annotation.class;
+  }
+
+  public void convertToClientAnnotation() {
+    this.setRunId(this.getRun().getId());
+    this.setPeriodId(this.getPeriod().getId());
+    this.setToWorkgroupId(this.getToWorkgroup().getId());
+    if (this.getFromWorkgroup() != null) {
+      this.setFromWorkgroupId(this.getFromWorkgroup().getId());
     }
-
-    public void setClientSaveTime(Timestamp clientSaveTime) {
-        this.clientSaveTime = clientSaveTime;
+    if (this.getStudentWork() != null) {
+      this.setStudentWorkId(this.getStudentWork().getId());
     }
+  }
 
-    public Timestamp getServerSaveTime() {
-        return serverSaveTime;
-    }
+  public JSONObject toJSON() {
+    JSONObject eventJSONObject = new JSONObject();
 
-    public void setServerSaveTime(Timestamp serverSaveTime) {
-        this.serverSaveTime = serverSaveTime;
-    }
+    try {
+      if (id != null) {
+        eventJSONObject.put("id", id);
+      }
 
-    public Run getRun() {
-        return run;
-    }
+      if (run != null) {
+        Long runId = run.getId();
+        eventJSONObject.put("runId", runId);
+      }
 
-    public void setRun(Run run) {
-        this.run = run;
-    }
+      if (period != null) {
+        Long periodId = period.getId();
+        eventJSONObject.put("periodId", periodId);
+      }
 
-    public Group getPeriod() {
-        return period;
-    }
+      if (fromWorkgroup != null) {
+        Long fromWorkgroupId = fromWorkgroup.getId();
+        eventJSONObject.put("fromWorkgroupId", fromWorkgroupId);
+      }
 
-    public void setPeriod(Group period) {
-        this.period = period;
-    }
+      if (toWorkgroup != null) {
+        Long toWorkgroupId = toWorkgroup.getId();
+        eventJSONObject.put("toWorkgroupId", toWorkgroupId);
+      }
 
-    public WISEWorkgroup getFromWorkgroup() {
-        return fromWorkgroup;
-    }
+      if (nodeId != null) {
+        eventJSONObject.put("nodeId", nodeId);
+      }
 
-    public void setFromWorkgroup(WISEWorkgroup fromWorkgroup) {
-        this.fromWorkgroup = fromWorkgroup;
-    }
+      if (componentId != null) {
+        eventJSONObject.put("componentId", componentId);
+      }
 
-    public WISEWorkgroup getToWorkgroup() {
-        return toWorkgroup;
-    }
+      if (studentWork != null) {
+        eventJSONObject.put("studentWorkId", studentWork.getId());
+      }
 
-    public void setToWorkgroup(WISEWorkgroup toWorkgroup) {
-        this.toWorkgroup = toWorkgroup;
-    }
+      if (localNotebookItemId != null) {
+        eventJSONObject.put("localNotebookItemId", localNotebookItemId);
+      }
 
-    public String getNodeId() {
-        return nodeId;
-    }
+      if (notebookItem != null) {
+        eventJSONObject.put("notebookItemId", notebookItem.getId());
+      }
 
-    public void setNodeId(String nodeId) {
-        this.nodeId = nodeId;
-    }
+      if (type != null) {
+        eventJSONObject.put("type", type);
+      }
 
-    public String getComponentId() {
-        return componentId;
-    }
-
-    public void setComponentId(String componentId) {
-        this.componentId = componentId;
-    }
-
-    public StudentWork getStudentWork() {
-        return studentWork;
-    }
-
-    public void setStudentWork(StudentWork studentWork) {
-        this.studentWork = studentWork;
-    }
-
-    public String getLocalNotebookItemId() {
-        return localNotebookItemId;
-    }
-
-    public void setLocalNotebookItemId(String localNotebookItemId) {
-        this.localNotebookItemId = localNotebookItemId;
-    }
-
-    public NotebookItem getNotebookItem() {
-        return notebookItem;
-    }
-
-    public void setNotebookItem(NotebookItem notebookItem) {
-        this.notebookItem = notebookItem;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getData() {
-        return data;
-    }
-
-    public void setData(String data) {
-        this.data = data;
-    }
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    @Override
-    protected Class<?> getObjectClass() {
-        return Annotation.class;
-    }
-
-    /**
-     * Get the JSON representation of the Event
-     * @return a JSONObject with the values from the Event
-     */
-    public JSONObject toJSON() {
-        JSONObject eventJSONObject = new JSONObject();
-
+      if (data != null) {
         try {
-
-            // set the id
-            if (this.id != null) {
-                eventJSONObject.put("id", this.id);
-            }
-
-            // set the run id
-            if (this.run != null) {
-                Long runId = this.run.getId();
-                eventJSONObject.put("runId", runId);
-            }
-
-            // set the period id
-            if (this.period != null) {
-                Long periodId = this.period.getId();
-                eventJSONObject.put("periodId", periodId);
-            }
-
-            // set the fromWorkgroupId
-            if (this.fromWorkgroup != null) {
-                Long fromWorkgroupId = this.fromWorkgroup.getId();
-                eventJSONObject.put("fromWorkgroupId", fromWorkgroupId);
-            }
-
-            // set the toWorkgroupId
-            if (this.toWorkgroup != null) {
-                Long toWorkgroupId = this.toWorkgroup.getId();
-                eventJSONObject.put("toWorkgroupId", toWorkgroupId);
-            }
-
-            // set the node id
-            if (this.nodeId != null) {
-                eventJSONObject.put("nodeId", this.nodeId);
-            }
-
-            // set the component id
-            if (this.componentId != null) {
-                eventJSONObject.put("componentId", this.componentId);
-            }
-
-            // set the component state id
-            if (this.studentWork != null) {
-                eventJSONObject.put("studentWorkId", this.studentWork.getId());
-            }
-
-            // set the local notebook item id
-            if (this.localNotebookItemId != null) {
-                eventJSONObject.put("localNotebookItemId", this.localNotebookItemId);
-            }
-
-            // set the notebook item
-            if (this.notebookItem != null) {
-                eventJSONObject.put("notebookItemId", this.notebookItem.getId());
-            }
-
-            // set the type
-            if (this.type != null) {
-                eventJSONObject.put("type", this.type);
-            }
-
-            // set the data
-            if (this.data != null) {
-                try {
-                    eventJSONObject.put("data", new JSONObject(this.data));
-                } catch (JSONException e) {
-                    eventJSONObject.put("data", this.data);
-                }
-            }
-
-            // set the clientSaveTime
-            if (this.clientSaveTime != null) {
-                eventJSONObject.put("clientSaveTime", clientSaveTime.getTime());
-            }
-
-            // set the serverSaveTime
-            if (this.serverSaveTime != null) {
-                eventJSONObject.put("serverSaveTime", serverSaveTime.getTime());
-            }
-
+          eventJSONObject.put("data", new JSONObject(data));
         } catch (JSONException e) {
-            e.printStackTrace();
+          eventJSONObject.put("data", data);
         }
+      }
 
-        return eventJSONObject;
+      if (clientSaveTime != null) {
+        eventJSONObject.put("clientSaveTime", clientSaveTime.getTime());
+      }
+
+      if (serverSaveTime != null) {
+        eventJSONObject.put("serverSaveTime", serverSaveTime.getTime());
+      }
+
+    } catch (JSONException e) {
+      e.printStackTrace();
     }
+    return eventJSONObject;
+  }
 }

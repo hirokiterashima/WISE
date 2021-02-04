@@ -1,136 +1,231 @@
-"use strict";
+'use strict';
 
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
+class NotebookItemController {
+  constructor($injector,
+              $mdDialog,
+              $rootScope,
+              $scope,
+              $filter,
+              ConfigService,
+              NotebookService,
+              ProjectService,
+              StudentAssetService,
+              StudentDataService,
+              UtilService) {
+    this.$injector = $injector;
+    this.$mdDialog = $mdDialog;
+    this.$rootScope = $rootScope;
+    this.$scope = $scope;
+    this.$filter = $filter;
+    this.ConfigService = ConfigService;
+    this.NotebookService = NotebookService;
+    this.ProjectService = ProjectService;
+    this.StudentAssetService = StudentAssetService;
+    this.StudentDataService = StudentDataService;
+    this.UtilService = UtilService;
+    this.$translate = this.$filter('translate');
+    this.$scope.$on('$destroy', () => {
+      this.ngOnDestroy();
+    });
+  }
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+  ngOnDestroy() {
+    this.unsubscribeAll();
+  }
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+  unsubscribeAll() {
+    this.notebookUpdatedSubscription.unsubscribe();
+  }
 
-var NotebookItemController = function () {
-    function NotebookItemController($injector, $rootScope, $scope, $filter, ConfigService, NotebookService, ProjectService, StudentAssetService, StudentDataService, UtilService) {
-        var _this = this;
-
-        _classCallCheck(this, NotebookItemController);
-
-        this.$injector = $injector;
-        this.$rootScope = $rootScope;
-        this.$scope = $scope;
-        this.$filter = $filter;
-        this.ConfigService = ConfigService;
-        this.NotebookService = NotebookService;
-        this.ProjectService = ProjectService;
-        this.StudentAssetService = StudentAssetService;
-        this.StudentDataService = StudentDataService;
-        this.UtilService = UtilService;
-
-        this.$translate = this.$filter('translate');
-        //this.mode = this.ConfigService.getMode();
-
-        this.item = this.NotebookService.getLatestNotebookItemByLocalNotebookItemId(this.itemId, this.workgroupId);
-        this.item.id = null; // set to null so we're creating a new notebook item. An edit to a notebook item results in a new entry in the db.
-
-        // set the type in the controller
-        this.type = this.item ? this.item.type : null;
-
-        //this.notebookConfig = this.NotebookService.getNotebookConfig();
-        this.label = this.config.itemTypes[this.type].label;
-
-        this.$rootScope.$on('notebookUpdated', function (event, args) {
-            var notebook = args.notebook;
-            if (notebook.items[_this.itemId]) {
-                _this.item = notebook.items[_this.itemId].last();
-            }
-        });
+  $onInit() {
+    this.item = this.note;
+    this.type = this.item ? this.item.type : null;
+    this.label = this.config.itemTypes[this.type].label;
+    if (this.group === 'public') {
+      this.color = 'orange';
+    } else {
+      this.color = this.label.color;
     }
 
-    _createClass(NotebookItemController, [{
-        key: 'getItemNodeId',
-        value: function getItemNodeId() {
-            if (this.item == null) {
-                return null;
-            } else {
-                return this.item.nodeId;
-            }
-        }
+    this.notebookUpdatedSubscription = this.NotebookService.notebookUpdated$.subscribe((args) => {
+      const notebook = args.notebook;
+      if (notebook.items[this.itemId]) {
+        this.item = notebook.items[this.itemId].last();
+      }
+    });
+  }
 
-        /**
-         * Returns this NotebookItem's position link
-         */
+  isItemInGroup(group) {
+    return this.item.groups != null && this.item.groups.includes(group);
+  }
 
-    }, {
-        key: 'getItemNodeLink',
-        value: function getItemNodeLink() {
-            if (this.item == null) {
-                return "";
-            } else {
-                return this.ProjectService.getNodePositionAndTitleByNodeId(this.item.nodeId);
-            }
-        }
+  getItemNodeId() {
+    if (this.item == null) {
+      return null;
+    } else {
+      return this.item.nodeId;
+    }
+  }
 
-        /**
-         * Returns this NotebookItem's position
-         */
+  getItemNodeLink() {
+    if (this.item == null) {
+      return '';
+    } else {
+      return this.ProjectService.getNodePositionAndTitleByNodeId(this.item.nodeId);
+    }
+  }
 
-    }, {
-        key: 'getItemNodePosition',
-        value: function getItemNodePosition() {
-            if (this.item == null) {
-                return "";
-            } else {
-                return this.ProjectService.getNodePositionById(this.item.nodeId);
-            }
-        }
-    }, {
-        key: 'getTemplateUrl',
-        value: function getTemplateUrl() {
-            return this.ProjectService.getThemePath() + '/notebook/notebookItem.html';
-        }
-    }, {
-        key: 'doDelete',
-        value: function doDelete(ev) {
-            if (this.onDelete) {
-                ev.stopPropagation(); // don't follow-through on the doSelect callback after this
-                this.onDelete({ $ev: ev, $itemId: this.item.localNotebookItemId });
-            }
-        }
-    }, {
-        key: 'doRevive',
-        value: function doRevive(ev) {
-            if (this.onRevive) {
-                ev.stopPropagation(); // don't follow-through on the doRevive callback after this
-                this.onRevive({ $ev: ev, $itemId: this.item.localNotebookItemId });
-            }
-        }
-    }, {
-        key: 'doSelect',
-        value: function doSelect(ev) {
-            if (this.onSelect) {
-                this.onSelect({ $ev: ev, $itemId: this.item.localNotebookItemId });
-            }
-        }
-    }]);
+  getItemNodePosition() {
+    if (this.item == null) {
+      return '';
+    } else {
+      return this.ProjectService.getNodePositionById(this.item.nodeId);
+    }
+  }
 
-    return NotebookItemController;
-}();
+  doDelete(ev) {
+    ev.stopPropagation();
+    const confirm = this.$mdDialog.confirm()
+      .title(this.$translate('deleteNoteConfirmMessage'))
+      .ariaLabel('delete note confirmation')
+      .targetEvent(ev)
+      .ok(this.$translate('delete'))
+      .cancel(this.$translate('cancel'));
+    this.$mdDialog.show(confirm).then(() => {
+      this.NotebookService.deleteNote(this.item);
+    }, () => {
+      // they chose not to delete. Do nothing, the dialog will close.
+    });
+  }
 
-NotebookItemController.$inject = ["$injector", "$rootScope", "$scope", "$filter", "ConfigService", "NotebookService", "ProjectService", "StudentAssetService", "StudentDataService", "UtilService"];
+  doRevive(ev) {
+    ev.stopPropagation();
+    const confirm = this.$mdDialog.confirm()
+      .title(this.$translate('reviveNoteConfirmMessage'))
+      .ariaLabel('revive note confirmation')
+      .targetEvent(ev)
+      .ok(this.$translate('revive'))
+      .cancel(this.$translate('cancel'));
+    this.$mdDialog.show(confirm).then(() => {
+      this.NotebookService.reviveNote(this.item);
+    }, () => {
+      // they chose not to revive. Do nothing, the dialog will close.
+    });
+  }
 
-var NotebookItem = {
-    bindings: {
-        itemId: '<',
-        isChooseMode: '<',
-        config: '<',
-        componentController: '<',
-        workgroupId: '<',
-        onDelete: '&',
-        onRevive: '&',
-        onSelect: '&'
-    },
-    template: '<md-card class="notebook-item"\n                  ng-mouseenter="focus=true;"\n                  ng-mouseleave="focus=false;"\n                  ng-class="{\'md-whiteframe-5dp\': focus}"\n                  ng-click="$ctrl.doSelect($event)">\n            <md-card-content aria-label="View"\n                             class="notebook-item__content notebook-item__edit"\n                             ng-class="{\'notebook-item__content--text-only\': !$ctrl.item.content.attachments.length}"\n                             md-ink-ripple\n                             flex\n                             layout="column"\n                             layout-align="center center">\n                <div ng-repeat="attachment in $ctrl.item.content.attachments"\n                     ng-if="$first"\n                     class="notebook-item__content__attachment"\n                     style="background: url(\'{{attachment.iconURL}}\')"></div>\n                <div ng-if="$ctrl.item.content.text"\n                     class="notebook-item__content__text notebook-item__edit md-body-1"\n                     style="color: {{$ctrl.label.color}}">\n                    {{$ctrl.item.content.text}}\n                </div>\n            </md-card-content>\n            <md-card-actions class="notebook-item__actions"\n                             layout="row"\n                             layout-align="start center"\n                             style="background-color: {{$ctrl.label.color}}">\n                <span class="notebook-item__content__location"><md-icon> place </md-icon><span class="md-body-1">{{$ctrl.getItemNodePosition()}}</span></span>\n                <span flex></span>\n                <md-button class="md-icon-button"\n                           ng-if="$ctrl.item.serverDeleteTime == null && !$ctrl.isChooseMode"\n                           aria-label="Delete notebook item"\n                           ng-click="$ctrl.doDelete($event)">\n                    <md-icon> delete </md-icon>\n                    <md-tooltip md-direction="top">{{ \'DELETE\' | translate }}</md-tooltip>\n                </md-button>\n                <md-button class="md-icon-button"\n                           ng-if="$ctrl.item.serverDeleteTime != null && !$ctrl.isChooseMode"\n                           aria-label="Revive notebook item"\n                           ng-click="$ctrl.doRevive($event)">\n                    <md-icon> undo </md-icon>\n                    <md-tooltip md-direction="top">{{ \'reviveNote\' | translate }}</md-tooltip>\n                </md-button>\n            </md-card-actions>\n        </md-card>',
-    controller: NotebookItemController
+  doSelect(ev) {
+    if (this.onSelect) {
+      this.onSelect({$ev: ev, note: this.item});
+    }
+  }
+
+  canShareNotebookItem() {
+    return this.ProjectService.isSpaceExists('public') &&
+        this.isMyNotebookItem() &&
+        this.item.serverDeleteTime == null &&
+        !this.isChooseMode &&
+        !this.isItemInGroup('public');
+  }
+
+  canUnshareNotebookItem() {
+    return this.ProjectService.isSpaceExists('public') &&
+        this.isMyNotebookItem() &&
+        this.item.serverDeleteTime == null &&
+        !this.isChooseMode &&
+        this.isItemInGroup('public');
+  }
+
+  canDeleteNotebookItem() {
+    return this.isMyNotebookItem() &&
+        this.item.serverDeleteTime == null &&
+        !this.isChooseMode;
+  }
+
+  canReviveNotebookItem() {
+    return this.item.serverDeleteTime != null && !this.isChooseMode;
+  }
+
+  isMyNotebookItem() {
+    return this.item.workgroupId === this.ConfigService.getWorkgroupId();
+  }
+
+  isNotebookItemActive() {
+    return this.item.serverDeleteTime == null;
+  }
+}
+
+NotebookItemController.$inject = [
+  '$injector',
+  '$mdDialog',
+  '$rootScope',
+  '$scope',
+  '$filter',
+  'ConfigService',
+  'NotebookService',
+  'ProjectService',
+  'StudentAssetService',
+  'StudentDataService',
+  'UtilService'
+];
+
+const NotebookItem = {
+  bindings: {
+    itemId: '<',
+    group: '@',
+    note: '<',
+    isChooseMode: '<',
+    config: '<',
+    componentController: '<',
+    workgroupId: '<',
+    onSelect: '&'
+  },
+  template:
+    `<md-card class="notebook-item"
+                  ng-if="$ctrl.isNotebookItemActive()"
+                  ng-mouseenter="focus=true;"
+                  ng-mouseleave="focus=false;"
+                  ng-class="{'md-whiteframe-5dp': focus}"
+                  ng-click="$ctrl.doSelect($event)">
+            <md-card-content aria-label="View"
+                             class="notebook-item__content notebook-item__edit"
+                             ng-class="{'notebook-item__content--text-only': !$ctrl.item.content.attachments.length}"
+                             md-ink-ripple
+                             flex
+                             layout="column"
+                             layout-align="center center">
+                <div ng-repeat="attachment in $ctrl.item.content.attachments"
+                     ng-if="$first"
+                     class="notebook-item__content__attachment"
+                     style="background: url('{{attachment.iconURL}}')"></div>
+                <div ng-if="$ctrl.item.content.text"
+                     class="notebook-item__content__text notebook-item__edit md-body-1"
+                     style="color: {{$ctrl.label.color}}">
+                    {{$ctrl.item.content.text}}
+                </div>
+            </md-card-content>
+            <md-card-actions class="notebook-item__actions"
+                             layout="row"
+                             layout-align="start center"
+                             style="background-color: {{$ctrl.color}}">
+                <span class="notebook-item__content__location"><md-icon> place </md-icon><span class="md-body-1">{{$ctrl.getItemNodePosition()}}</span></span>
+                <span flex></span>
+                <md-button class="md-icon-button"
+                           ng-if="$ctrl.canDeleteNotebookItem()"
+                           aria-label="Delete notebook item"
+                           ng-click="$ctrl.doDelete($event)">
+                    <md-icon> delete </md-icon>
+                    <md-tooltip md-direction="top">{{ ::'DELETE' | translate }}</md-tooltip>
+                </md-button>
+                <md-button class="md-icon-button"
+                           ng-if="$ctrl.canReviveNotebookItem()"
+                           aria-label="Revive notebook item"
+                           ng-click="$ctrl.doRevive($event)">
+                    <md-icon> undo </md-icon>
+                    <md-tooltip md-direction="top">{{ ::'reviveNote' | translate }}</md-tooltip>
+                </md-button>
+            </md-card-actions>
+        </md-card>`,
+  controller: NotebookItemController
 };
 
-exports.default = NotebookItem;
-//# sourceMappingURL=notebookItem.js.map
+export default NotebookItem;

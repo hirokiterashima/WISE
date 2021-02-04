@@ -1,9 +1,9 @@
 /**
- * Copyright (c) 2007-2015 Encore Research Group, University of Toronto
+ * Copyright (c) 2007-2017 Encore Research Group, University of Toronto
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -30,60 +30,55 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.wise.portal.spring.SpringConfiguration;
 
+import javax.servlet.annotation.WebServlet;
+
 /**
  * @author Cynick Young
  */
 public class CustomDispatcherServlet extends DispatcherServlet {
 
-    private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-    /**
-     * Name of servlet initialization parameter that specifies the
-     * implementation class which holds all the config locations. Use
-     * "contextConfigClass".
-     */
-    public static final String CONFIG_CLASS_PARAM = "contextConfigClass";
+  /**
+   * Name of servlet initialization parameter that specifies the
+   * implementation class which holds all the config locations. Use
+   * "contextConfigClass".
+   */
+  public static final String CONFIG_CLASS_PARAM = "contextConfigClass";
 
-    private String contextConfigClass;
+  private String contextConfigClass;
 
-    /**
-     * Constructor that adds a required servlet initialization parameter
-     * CONFIG_CLASS_PARAM
-     */
-    public CustomDispatcherServlet() {
-        super();
-        this.addRequiredProperty(CONFIG_CLASS_PARAM);
+  /**
+   * Constructor that adds a required servlet initialization parameter
+   * CONFIG_CLASS_PARAM
+   */
+  public CustomDispatcherServlet() {
+    super();
+    addRequiredProperty(CONFIG_CLASS_PARAM);
+  }
+
+  public void setContextConfigClass(String contextConfigClass) {
+    this.contextConfigClass = contextConfigClass;
+  }
+
+  @Override
+  protected WebApplicationContext createWebApplicationContext(WebApplicationContext parent)
+      throws BeansException {
+    try {
+      SpringConfiguration springConfig =
+          (SpringConfiguration) BeanUtils.instantiateClass(Class.forName(contextConfigClass));
+
+      setContextConfigLocation(StringUtils.arrayToDelimitedString(
+          springConfig.getDispatcherServletContextConfigLocations(),
+          ConfigurableWebApplicationContext.CONFIG_LOCATION_DELIMITERS));
+    } catch (ClassNotFoundException e) {
+      if (logger.isErrorEnabled()) {
+        logger.error(
+            CONFIG_CLASS_PARAM + " <"  + contextConfigClass + "> not found.", e);
+      }
+      throw new InvalidParameterException("ClassNotFoundException: " + contextConfigClass);
     }
-
-    /**
-     * @param contextConfigClass
-     *            the contextConfigClass to set
-     */
-    public void setContextConfigClass(String contextConfigClass) {
-        this.contextConfigClass = contextConfigClass;
-    }
-
-    /**
-     * @see org.springframework.web.servlet.FrameworkServlet#createWebApplicationContext(org.springframework.web.context.WebApplicationContext)
-     */
-    @Override
-    protected WebApplicationContext createWebApplicationContext(
-            WebApplicationContext parent) throws BeansException {
-        try {
-            SpringConfiguration springConfig = (SpringConfiguration) BeanUtils
-                    .instantiateClass(Class.forName(this.contextConfigClass));
-            
-            this.setContextConfigLocation(StringUtils
-                            .arrayToDelimitedString(
-                                    springConfig.getDispatcherServletContextConfigLocations(),
-                                    ConfigurableWebApplicationContext.CONFIG_LOCATION_DELIMITERS));
-        } catch (ClassNotFoundException e) {
-            if (this.logger.isErrorEnabled()) {
-                this.logger.error(CONFIG_CLASS_PARAM + " <"  + this.contextConfigClass + "> not found.", e);
-            }
-            throw new InvalidParameterException("ClassNotFoundException: " + this.contextConfigClass);
-        }
-        return super.createWebApplicationContext(parent);
-    }
+    return super.createWebApplicationContext(parent);
+  }
 
 }

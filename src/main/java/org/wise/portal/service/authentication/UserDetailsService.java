@@ -1,9 +1,9 @@
 /**
- * Copyright (c) 2007-2015 Encore Research Group, University of Toronto
+ * Copyright (c) 2007-2017 Encore Research Group, University of Toronto
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -23,84 +23,79 @@ package org.wise.portal.service.authentication;
 import java.util.List;
 
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.wise.portal.domain.authentication.MutableGrantedAuthority;
 import org.wise.portal.domain.authentication.MutableUserDetails;
 
 /**
- * Provides WISE-specific ROLES on top of what is already
- * available in WISE
- * 
+ * Provides WISE-specific ROLES on top of what is already available in WISE
  * @author Hiroki Terashima
  */
 public interface UserDetailsService extends
-	org.springframework.security.core.userdetails.UserDetailsService {
-	
-	String USER_ROLE = "ROLE_USER";
+    org.springframework.security.core.userdetails.UserDetailsService {
 
-    String ADMIN_ROLE = "ROLE_ADMINISTRATOR";
+  String ANONYMOUS_ROLE = "ROLE_ANONYMOUS";
 
-	String TEACHER_ROLE = "ROLE_TEACHER";
-	
-	String STUDENT_ROLE = "ROLE_STUDENT";
-	
-	String AUTHOR_ROLE = "ROLE_AUTHOR";
+  String USER_ROLE = "ROLE_USER";
 
-	String TRUSTED_AUTHOR_ROLE = "ROLE_TRUSTED_AUTHOR";
+  String ADMIN_ROLE = "ROLE_ADMINISTRATOR";
 
-	String RESEARCHER_ROLE = "ROLE_RESEARCHER";
+  String PREVIOUS_ADMIN_ROLE = "ROLE_PREVIOUS_ADMINISTRATOR";
 
-	String RUN_GRADE_ROLE = "ROLE_RUN_GRADE";
-	
-	String RUN_READ_ROLE = "ROLE_RUN_READ";
-		
-	String PROJECT_READ_ROLE = "ROLE_READ_PROJECT";
-	
-	String PROJECT_WRITE_ROLE = "ROLE_WRITE_PROJECT";
+  String TEACHER_ROLE = "ROLE_TEACHER";
 
-	String PROJECT_SHARE_ROLE = "ROLE_SHARE_PROJECT";
-	
-    /**
-     * Given an object representing a role, created the granted authority record
-     * in the data store.
-     * 
-     * @param mutableGrantedAuthority
-     *            to create in the data store
-     * @return the <code>MutableGrantedAuthority</code> object after it has
-     *         been saved in the data store
-     * @throws DuplicateAuthorityException
-     *             if authority is not unique.
-     */
-    MutableGrantedAuthority createGrantedAuthority(
-            MutableGrantedAuthority mutableGrantedAuthority)
-            throws DuplicateAuthorityException;
+  String STUDENT_ROLE = "ROLE_STUDENT";
 
-    /**
-     * Given an authority string, loads an authority from the data store.
-     * 
-     * @param authority
-     * @return A MutableGrantedAuthority object
-     * @throws AuthorityNotFoundException
-     *             If authority is not in data store.
-     */
-    GrantedAuthority loadAuthorityByName(String authority)
-            throws AuthorityNotFoundException;
+  String AUTHOR_ROLE = "ROLE_AUTHOR";
 
-    /**
-     * Returns a list of all existing authorities in the system.
-     * 
-     * @return A List of MutableGrantedAuthority objects
-     */
-    List<MutableGrantedAuthority> retrieveAllAuthorities();
-    
-    /**
-     * Given a MutableUserDetails, updates the data of that object in the database
-     * @param userDetails
-     */
-    void updateUserDetails(final MutableUserDetails userDetails);
+  String TRUSTED_AUTHOR_ROLE = "ROLE_TRUSTED_AUTHOR";
 
+  String RESEARCHER_ROLE = "ROLE_RESEARCHER";
 
-	List<MutableUserDetails> retrieveAllUserDetails(String userDetailsClassName);
+  String RUN_GRADE_ROLE = "ROLE_RUN_GRADE";
 
-	List<String> retrieveAllUsernames(String userDetailsClassName);
+  String RUN_READ_ROLE = "ROLE_RUN_READ";
 
+  String PROJECT_READ_ROLE = "ROLE_READ_PROJECT";
+
+  String PROJECT_WRITE_ROLE = "ROLE_WRITE_PROJECT";
+
+  String PROJECT_SHARE_ROLE = "ROLE_SHARE_PROJECT";
+
+  /**
+   * Given an object representing a role, created the granted authority record
+   * in the data store.
+   *
+   * @param mutableGrantedAuthority to create in the data store
+   * @return the <code>MutableGrantedAuthority</code> object after it has
+   * been saved in the data store
+   * @throws DuplicateAuthorityException if authority is not unique.
+   */
+  MutableGrantedAuthority createGrantedAuthority(MutableGrantedAuthority mutableGrantedAuthority)
+    throws DuplicateAuthorityException;
+
+  /**
+   * Given an authority string, loads an authority from the data store.
+   *
+   * @param authority
+   * @return A MutableGrantedAuthority object
+   * @throws AuthorityNotFoundException if authority is not in data store.
+   */
+  GrantedAuthority loadAuthorityByName(String authority)
+    throws AuthorityNotFoundException;
+
+  /**
+   * Returns a list of all existing authorities in the system.
+   * @return A List of MutableGrantedAuthority objects
+   */
+  List<MutableGrantedAuthority> retrieveAllAuthorities();
+
+  void updateUserDetails(final MutableUserDetails userDetails);
+
+  UserDetails loadUserByGoogleUserId(String googleUserId);
+
+  void updateStatsOnSuccessfulLogin(MutableUserDetails userDetails);
+
+  List<String> retrieveAllTeacherUsernames();
+  List<String> retrieveAllStudentUsernames();
 }

@@ -10,7 +10,18 @@
                 "group2",
                 "group3",
                 "group4"
-            ]
+            ],
+          "transitionLogic": {
+            "transitions": [
+              {
+                "to": "group1"
+              }
+            ],
+            "howToChooseAmongAvailablePaths": null,
+            "whenToChoosePath": null,
+            "canChangePath": null,
+            "maxPathsVisitable": null
+          }
         },
         {
             "id": "group1",
@@ -87,7 +98,7 @@
         {
             "id": "node2",
             "type": "node",
-            "showSaveButton": true,
+            "showSaveButton": false,
             "showSubmitButton": false,
             "constraints": [],
             "transitionLogic": {
@@ -168,7 +179,7 @@
         {
             "id": "node5",
             "type": "node",
-            "showSaveButton": true,
+            "showSaveButton": false,
             "showSubmitButton": false,
             "constraints": [],
             "transitionLogic": {
@@ -208,7 +219,7 @@
                             "isCorrect": false
                         }
                     ],
-                    "showSaveButton": false,
+                    "showSaveButton": true,
                     "showSubmitButton": true,
                     "choiceType": "radio",
                     "maxScore": 2
@@ -218,7 +229,7 @@
         {
             "id": "node6",
             "type": "node",
-            "showSaveButton": true,
+            "showSaveButton": false,
             "showSubmitButton": false,
             "constraints": [],
             "transitionLogic": {
@@ -270,7 +281,7 @@
                             "isCorrect": false
                         }
                     ],
-                    "showSaveButton": false,
+                    "showSaveButton": true,
                     "showSubmitButton": true,
                     "choiceType": "checkbox"
                 }
@@ -3442,7 +3453,7 @@
                     "enableTrials": false,
                     "canCreateNewTrials": false,
                     "canDeleteTrials": false,
-                    "showAllTrialsOnNewTrial": false,
+                    "hideAllTrialsOnNewTrial": false,
                     "xAxis": {
                         "title": {
                             "text": "Time (seconds)"
@@ -3494,7 +3505,7 @@
                     "enableTrials": true,
                     "canCreateNewTrials": true,
                     "canDeleteTrials": true,
-                    "showAllTrialsOnNewTrial": false,
+                    "hideAllTrialsOnNewTrial": false,
                     "xAxis": {
                         "title": {
                             "text": "Time (seconds)"

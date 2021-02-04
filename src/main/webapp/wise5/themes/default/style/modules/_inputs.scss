@@ -38,17 +38,6 @@ $input-action-vertical-offset-richtext: -7px;
     border: 1px solid color('gray');
     margin-bottom: 8px;
 
-    &.input--textarea--hasaction {
-        padding-right: $input-action-width;
-        min-height: 96px;
-        float: none;
-
-        .mce-toolbar-grp {
-            padding-right: $input-action-width;
-        }
-
-    }
-
     &:focus {
         background-color: #ffffff;
     }
@@ -65,7 +54,6 @@ $input-action-vertical-offset-richtext: -7px;
 .input--textarea--disabled {
     color: color('text-secondary');
 }
-
 
 .input--textarea__action {
     position: absolute;
@@ -99,5 +87,50 @@ $input-action-vertical-offset-richtext: -7px;
 
     &.input-label--focused {
         color: color('primary');
+    }
+}
+
+.autocomplete {
+    input {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        word-wrap: none;
+        font-weight: 500;
+        color: color('text-secondary');
+    }
+}
+
+.autocomplete--minwidth {
+    @media only screen and (min-width: $layout-breakpoint-xs) {
+        min-width: 300px;
+    }
+
+    @media only screen and (min-width: $layout-breakpoint-sm) {
+        min-width: 300px;
+    }
+}
+
+.autocomplete--flat {
+    md-autocomplete-wrap {
+        background-color: #ffffff;
+
+        &:not(.md-menu-showing) {
+            box-shadow: none;
+            background-color: color('gray-lighter');
+        }
+    }
+}
+
+.select__header {
+    height: $menu-item-height;
+
+    input {
+        height: 100%;
+        width: 100%;
+        padding: 0 8px;
+        outline: none;
+        border: 0 none;
+        font-size: rem(1.4);
+        font-weight: 500;
     }
 }

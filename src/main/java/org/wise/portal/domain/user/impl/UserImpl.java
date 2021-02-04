@@ -1,9 +1,9 @@
 /**
- * Copyright (c) 2007-2015 Encore Research Group, University of Toronto
+ * Copyright (c) 2007-2017 Encore Research Group, University of Toronto
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -37,133 +37,88 @@ import org.wise.portal.domain.authentication.impl.PersistentUserDetails;
 import org.wise.portal.domain.user.User;
 import org.wise.portal.service.authentication.UserDetailsService;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * @author Laurel Williams
  */
 @Entity
 @Table(name = UserImpl.DATA_STORE_NAME)
+@Getter
+@Setter
 public class UserImpl implements User {
 
-    @Transient
-    public static final String DATA_STORE_NAME = "users";
+  @Transient
+  public static final String DATA_STORE_NAME = "users";
 
-    @Transient
-    public static final String COLUMN_NAME_USER_DETAILS_FK = "user_details_fk";
+  @Transient
+  public static final String COLUMN_NAME_USER_DETAILS_FK = "user_details_fk";
 
-    @Transient
-    private static final long serialVersionUID = 1L;
+  @Transient
+  private static final long serialVersionUID = 1L;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Long id = null;
+  @Id
+  @GeneratedValue(strategy = GenerationType.AUTO)
+  private Long id = null;
 
-    @Version
-    @Column(name = "OPTLOCK")
-    private Integer version = null;
+  @Version
+  @Column(name = "OPTLOCK")
+  private Integer version = null;
 
-    @OneToOne(cascade = CascadeType.ALL, targetEntity = PersistentUserDetails.class)
-    @JoinColumn(name = COLUMN_NAME_USER_DETAILS_FK, nullable = false, unique = true)
-    private MutableUserDetails userDetails;
+  @OneToOne(cascade = CascadeType.ALL, targetEntity = PersistentUserDetails.class)
+  @JoinColumn(name = COLUMN_NAME_USER_DETAILS_FK, nullable = false, unique = true)
+  private MutableUserDetails userDetails;
 
-    /**
-     * @see net.sf.sail.webapp.domain.User#getUserDetails()
-     */
-    public MutableUserDetails getUserDetails() {
-        return userDetails;
-    }
+  public boolean isStudent() {
+    return userDetails.hasGrantedAuthority(UserDetailsService.STUDENT_ROLE);
+  }
 
-    /**
-     * @see net.sf.sail.webapp.domain.User#setUserDetails(net.sf.sail.webapp.domain.authentication.MutableUserDetails)
-     */
-    public void setUserDetails(MutableUserDetails userDetails) {
-        this.userDetails = userDetails;
-    }
+  public boolean isTeacher() {
+    return userDetails.hasGrantedAuthority(UserDetailsService.TEACHER_ROLE);
+  }
 
-    /**
-     * @see net.sf.sail.webapp.domain.User#isAdmin()
-     */
-    public boolean isStudent(){
-        return this.userDetails.hasGrantedAuthority(UserDetailsService.STUDENT_ROLE);
-    }
+  public boolean isAdmin() {
+    return userDetails.hasGrantedAuthority(UserDetailsService.ADMIN_ROLE);
+  }
 
-    /**
-     * @see net.sf.sail.webapp.domain.User#isAdmin()
-     */
-    public boolean isAdmin(){
-    	return this.userDetails.hasGrantedAuthority(UserDetailsService.ADMIN_ROLE);
-    }
-    
-    /**
-     * @see net.sf.sail.webapp.domain.User#isAdmin()
-     */
-    public boolean isTrustedAuthor(){
-    	return this.userDetails.hasGrantedAuthority(UserDetailsService.TRUSTED_AUTHOR_ROLE);
-    }
+  public boolean isResearcher() {
+    return userDetails.hasGrantedAuthority(UserDetailsService.RESEARCHER_ROLE);
+  }
 
-    /**
-     * @return the id
-     */
-    @SuppressWarnings("unused")
-    public Long getId() {
-        return id;
-    }
+  public boolean isTrustedAuthor() {
+    return userDetails.hasGrantedAuthority(UserDetailsService.TRUSTED_AUTHOR_ROLE);
+  }
 
-    /**
-     * @param id
-     *            the id to set
-     */
-    @SuppressWarnings("unused")
-    private void setId(Long id) {
-        this.id = id;
-    }
+  @Override
+  public int hashCode() {
+    final int PRIME = 31;
+    int result = 1;
+    result = PRIME
+      * result
+      + ((userDetails == null) ? 0 : userDetails.hashCode());
+    return result;
+  }
 
-    /**
-     * @return the version
-     */
-    @SuppressWarnings("unused")
-    private Integer getVersion() {
-        return version;
-    }
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    final UserImpl other = (UserImpl) obj;
+    if (userDetails == null) {
+      if (other.userDetails != null)
+        return false;
+    } else if (!userDetails.equals(other.userDetails))
+      return false;
+    return true;
+  }
 
-    /**
-     * @param version
-     *            the version to set
-     */
-    @SuppressWarnings("unused")
-    private void setVersion(Integer version) {
-        this.version = version;
-    }
-
-    /**
-     * @see java.lang.Object#hashCode()
-     */
-    @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME
-                * result
-                + ((this.userDetails == null) ? 0 : this.userDetails.hashCode());
-        return result;
-    }
-
-    /**
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final UserImpl other = (UserImpl) obj;
-        if (this.userDetails == null) {
-            if (other.userDetails != null)
-                return false;
-        } else if (!this.userDetails.equals(other.userDetails))
-            return false;
-        return true;
-    }
+  @Override
+  public int compareTo(User o) {
+    return getId().compareTo(o.getId());
+  }
 }

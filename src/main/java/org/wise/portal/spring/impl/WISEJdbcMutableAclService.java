@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2008-2015 Regents of the University of California (Regents).
+ * Copyright (c) 2008-2017 Regents of the University of California (Regents).
  * Created by WISE, Graduate School of Education, University of California, Berkeley.
  * <p>
  * This software is distributed under the GNU General Public License, v3,
@@ -37,16 +37,15 @@ import org.springframework.security.acls.model.AclCache;
  */
 public class WISEJdbcMutableAclService extends JdbcMutableAclService {
 
-    public WISEJdbcMutableAclService(DataSource dataSource,
-                                     LookupStrategy lookupStrategy, AclCache aclCache, Properties wiseProperties) {
-        super(dataSource, lookupStrategy, aclCache);
-        if (wiseProperties.containsKey("hibernate.connection.driver_class")) {
-            String driverClass = (String) wiseProperties.get("hibernate.connection.driver_class");
-            if ("com.mysql.jdbc.Driver".equals(driverClass)) {
-                this.setClassIdentityQuery("SELECT @@IDENTITY");
-                this.setSidIdentityQuery("SELECT @@IDENTITY");
-            }
-        }
+  public WISEJdbcMutableAclService(DataSource dataSource, LookupStrategy lookupStrategy,
+      AclCache aclCache, Properties appProperties) {
+    super(dataSource, lookupStrategy, aclCache);
+    if (appProperties.containsKey("spring.datasource.driver-class-name")) {
+      String driverClass = (String) appProperties.get("spring.datasource.driver-class-name");
+      if ("com.mysql.jdbc.Driver".equals(driverClass)) {
+        setClassIdentityQuery("SELECT @@IDENTITY");
+        setSidIdentityQuery("SELECT @@IDENTITY");
+      }
     }
-
+  }
 }

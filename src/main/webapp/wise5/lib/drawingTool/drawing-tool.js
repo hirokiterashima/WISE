@@ -279,7 +279,7 @@ DrawingTool.prototype.clear = function (clearBackground) {
  */
 DrawingTool.prototype.clearSelection = function () {
   // Important! It will cause that all custom control points will be removed (e.g. for lines).
-  this.canvas.deactivateAllWithDispatch();
+  this.canvas.discardActiveObject();
   this.canvas.renderAll();
 };
 
@@ -527,8 +527,8 @@ DrawingTool.prototype.sendSelectionToBack = function () {
 DrawingTool.prototype.forEachSelectedObject = function (callback) {
   if (this.canvas.getActiveObject()) {
     callback(this.canvas.getActiveObject());
-  } else if (this.canvas.getActiveGroup()) {
-    this.canvas.getActiveGroup().objects.forEach(callback);
+  } else if (this.canvas.getActiveObjects()) {
+    this.canvas.getActiveObjects().forEach(callback);
   }
 };
 
@@ -550,11 +550,11 @@ DrawingTool.prototype._sendSelectionTo = function (where) {
   if (this.canvas.getActiveObject()) {
     // Simple case, only a single object is selected.
     send(this.canvas.getActiveObject());
-  } else if (this.canvas.getActiveGroup()) {
+  } else if (this.canvas.getActiveObjects()) {
     // Yes, this is overcomplicated, however FabricJS cannot handle
     // sending a group to front or back. We need to remove selection,
     // send particular objects and recreate selection...
-    var objects = this.canvas.getActiveGroup().getObjects();
+    var objects = this.canvas.getActiveObjects();
     this.clearSelection();
     objects.forEach(send);
     this.select(objects);
@@ -753,9 +753,9 @@ DrawingTool.prototype.select = function (objectOrObjects) {
  * Returns selected object or array of selected objects.
  */
 DrawingTool.prototype.getSelection = function () {
-  var actGroup = this.canvas.getActiveGroup();
+  var actGroup = this.canvas.getActiveObjects();
   if (actGroup) {
-    return actGroup.getObjects();
+    return actGroup;
   }
   var actObject = this.canvas.getActiveObject();
   return actObject && actObject.isControlPoint ? actObject._dt_sourceObj : actObject;
@@ -870,6 +870,8 @@ DrawingTool.prototype._setDimensions = function (width, height) {
       .css('width',   width)
       .css('height',  height);
     canvEl.getContext('2d').scale(pixelRatio, pixelRatio);
+    canvEl.width = width;
+    canvEl.height = height;
   }
 };
 
@@ -901,6 +903,10 @@ var $ = jQuery;
 
   'use strict';
 
+  if (global == null) {
+    global = window;
+  }
+  
   var fabric = global.fabric || (global.fabric = { }),
       extend = fabric.util.object.extend;
 
@@ -1094,9 +1100,14 @@ var $ = jQuery;
    * @param {Object} object Object to create an instance from
    * @return {fabric.Arrow} instance of fabric.Arrow
    */
-  fabric.Arrow.fromObject = function(object) {
-    var points = [object.x1, object.y1, object.x2, object.y2];
-    return new fabric.Arrow(points, object);
+  fabric.Arrow.fromObject = function(object, callback) {
+    function _callback(instance) {
+      delete instance.points;
+      callback && callback(instance);
+    };
+    var options = fabric.util.object.clone(object, true);
+    options.points = [object.x1, object.y1, object.x2, object.y2];
+    fabric.Object._fromObject('Arrow', options, _callback, 'points');
   };
 
 })(this);
@@ -1175,8 +1186,8 @@ function lineDeselected() {
   // as otherwise control point will remove line as well!
   this._dt_controlPoints[0]._dt_sourceObj = null;
   this._dt_controlPoints[1]._dt_sourceObj = null;
-  this._dt_controlPoints[0].remove();
-  this._dt_controlPoints[1].remove();
+  this.canvas.remove(this._dt_controlPoints[0]);
+  this.canvas.remove(this._dt_controlPoints[1]);
   this._dt_controlPoints = undefined;
   this.hasCustomControlPoints = false;
   this.off('moving');
@@ -1192,7 +1203,7 @@ function lineDeleted() {
   if (!this._dt_controlPoints) return;
   // If there are some, just remove one of them
   // It will cause that the second one will be removed as well.
-  this._dt_controlPoints[0].remove();
+  this.canvas.remove(this._dt_controlPoints[0]);
 }
 
 function controlPointMoved() {
@@ -1215,8 +1226,8 @@ function controlPointDeleted() {
     secondControlPoint = line._dt_controlPoints[1];
   }
   secondControlPoint.line = null;
-  secondControlPoint.remove();
-  line.remove();
+  this.canvas.remove(secondControlPoint);
+  this.canvas.remove(line);
 }
 
 // Helpers
@@ -1371,7 +1382,7 @@ module.exports = function addMultiTouchSupport(canvas) {
   }
 
   function getTarget() {
-    return canvas.getActiveObject() || canvas.getActiveGroup();
+    return canvas.getActiveObject() || canvas.getActiveObjects();
   }
 
   function setLocked(target, v) {
@@ -1742,7 +1753,7 @@ CloneTool.prototype.use = function () {
 };
 
 CloneTool.prototype.copy = function (callback) {
-  var activeObject = this.canvas.getActiveGroup() || this.canvas.getActiveObject();
+  var activeObject = this.canvas.getActiveObjects() || this.canvas.getActiveObject();
   if (!activeObject) {
     return;
   }
@@ -1774,7 +1785,7 @@ CloneTool.prototype.paste = function () {
   }
   var clonedObject = this._clipboard;
 
-  this.canvas.deactivateAllWithDispatch();
+  this.canvas.discardActiveObject();
 
   clonedObject.set({
     left: clonedObject.left + CLONE_OFFSET,
@@ -1831,8 +1842,11 @@ function DeleteTool(name, drawTool) {
   // Delete the selected object(s) with the backspace key.
   this.master.$element.on('keydown', function(e) {
     if (e.keyCode === 8) {
-      this.use();
-      e.preventDefault();
+      var activeObj = this.canvas.getActiveObject();
+      if (activeObj != null && activeObj.hoverCursor != 'text') {
+        this.use();
+        e.preventDefault();
+      }
     }
   }.bind(this));
 }
@@ -1847,8 +1861,8 @@ DeleteTool.prototype.use = function () {
   if (canvas.getActiveObject()) {
     canvas.remove(canvas.getActiveObject());
     this.master.pushToHistory();
-  } else if (canvas.getActiveGroup()) {
-    canvas.getActiveGroup().forEachObject(function (o) {
+  } else if (canvas.getActiveObjects()) {
+    canvas.getActiveObjects().forEach(function (o) {
       canvas.remove(o);
     });
     canvas.discardActiveGroup().renderAll();
@@ -2596,7 +2610,7 @@ TextTool.prototype.exitTextEditing = function () {
   // If text is in edit mode, deactivate it before changing the tool.
   var activeObj = this.canvas.getActiveObject();
   if (activeObj && activeObj.isEditing) {
-    this.canvas.deactivateAllWithDispatch();
+    this.canvas.discardActiveObject();
   }
 };
 
@@ -3755,3 +3769,4 @@ module.exports = {
 // code snippet that is used by Browserify when 'standalone' option is enabled).
 window.DrawingTool = require2('scripts/drawing-tool');
 
+export default DrawingTool;

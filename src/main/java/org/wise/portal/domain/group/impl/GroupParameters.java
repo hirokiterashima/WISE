@@ -3,7 +3,7 @@
  *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
@@ -20,83 +20,26 @@
  */
 package org.wise.portal.domain.group.impl;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.io.Serializable;
 
 /**
+ * A class to represent parameters required to create or update a group from the UI.
  * @author Laurel Williams
- * 
- * A class to represent parameters required to create or update a group from the
- * UI.
  */
+@Getter
+@Setter
 public class GroupParameters implements Serializable {
-	
-	private static final long serialVersionUID = 1L;
 
-	private Long groupId;
+  private static final long serialVersionUID = 1L;
 
-	private String name;
+  private Long groupId;
 
-	private Long parentId = new Long(0);
-	
-	private Long[] memberIds = new Long[0];
+  private String name;
 
-	/**
-	 * @return the groupId
-	 */
-	public Long getGroupId() {
-		return groupId;
-	}
+  private Long parentId = new Long(0);
 
-	/**
-	 * @param groupId the groupId to set
-	 */
-	public void setGroupId(Long groupId) {
-		this.groupId = groupId;
-	}
-	
-	/**
-	 * @return the name
-	 */
-	public String getName() {
-		return name;
-	}
-
-	/**
-	 * @param name
-	 *            the name to set
-	 */
-	public void setName(String name) {
-		this.name = name;
-	}
-
-	/**
-	 * @return the parentId
-	 */
-	public Long getParentId() {
-		return parentId;
-	}
-
-	/**
-	 * @param parentId
-	 *            the parentId to set
-	 */
-	public void setParentId(Long parentId) {
-		this.parentId = parentId;
-	}
-
-	/**
-	 * @return the memberIds
-	 */
-	public Long[] getMemberIds() {
-		return memberIds;
-	}
-	
-	/**
-	 * This method is required for use via jsp to populate the member ids.
-	 * 
-	 * @param memberIds the memberIds to set
-	 */
-	public void setMemberIds(Long[] memberIds) {
-		this.memberIds = memberIds;
-	}
+  private Long[] memberIds = new Long[0];
 }

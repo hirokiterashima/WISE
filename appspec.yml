@@ -1,0 +1,12 @@
+version: 0.0
+os: linux
+files:
+  - source: /wise.war
+    destination: /home/ubuntu/build-folder
+hooks:
+  BeforeInstall:
+    - location: beforeInstall.sh
+      runas: root
+  AfterInstall:
+    - location: afterInstall.sh
+      runas: root

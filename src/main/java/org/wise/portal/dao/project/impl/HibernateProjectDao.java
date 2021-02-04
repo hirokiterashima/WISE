@@ -1,21 +1,21 @@
 /**
- * Copyright (c) 2008-2015 Regents of the University of California (Regents).
+ * Copyright (c) 2008-2017 Regents of the University of California (Regents).
  * Created by WISE, Graduate School of Education, University of California, Berkeley.
- * 
+ *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
  * the following two paragraphs appear in all copies of this software.
- * 
+ *
  * REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE. THE SOFTWARE AND ACCOMPANYING DOCUMENTATION, IF ANY, PROVIDED
  * HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
  * MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
- * 
+ *
  * IN NO EVENT SHALL REGENTS BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
  * SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS,
  * ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
@@ -28,223 +28,229 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+import javax.persistence.criteria.Subquery;
+
 import org.hibernate.Session;
-import org.hibernate.criterion.Order;
-import org.hibernate.criterion.Restrictions;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.wise.portal.dao.ObjectNotFoundException;
 import org.wise.portal.dao.impl.AbstractHibernateDao;
 import org.wise.portal.dao.project.ProjectDao;
-import org.wise.portal.domain.project.FamilyTag;
+import org.wise.portal.domain.impl.TagImpl;
 import org.wise.portal.domain.project.Project;
-import org.wise.portal.domain.project.ProjectInfo;
-import org.wise.portal.domain.project.Tag;
 import org.wise.portal.domain.project.impl.ProjectImpl;
+import org.wise.portal.domain.run.impl.RunImpl;
 import org.wise.portal.domain.user.User;
+import org.wise.portal.domain.user.impl.UserImpl;
 
 /**
  * @author Hiroki Terashima
  */
 @Repository
 public class HibernateProjectDao extends AbstractHibernateDao<Project> implements
-		ProjectDao<Project> {
-	
-    	private static final String FIND_ALL_QUERY = "from ProjectImpl";
+    ProjectDao<Project> {
 
-	/**
-	 * @see org.wise.portal.dao.offering.RunDao#retrieveByRunCode(String)
-	 */
-	@SuppressWarnings("unchecked")
-	public List<Project> retrieveListByTag(FamilyTag familytag) throws ObjectNotFoundException {
-		List<Project> projects = (List<Project>) this
-						.getHibernateTemplate()
-						.findByNamedParam(
-								"from ProjectImpl as project where project.familytag = :familytag",
-								"familytag", familytag);
-		if (projects == null)
-			throw new ObjectNotFoundException(familytag, this
-					.getDataObjectClass());
-		return projects;
-	}
-	
-	/**
-	 * @see org.wise.portal.dao.offering.RunDao#retrieveByRunCode(String)
-	 */
-	@SuppressWarnings("unchecked")
-	public List<Project> retrieveListByTag(String projectinfotag) throws ObjectNotFoundException {
-		List<Project> projects = (List<Project>) this
-		.getHibernateTemplate()
-		.findByNamedParam(
-				"from ProjectImpl as project where upper(project.projectinfotag) = :projectinfotag",
-				"projectinfotag", projectinfotag.toString().toUpperCase());
-		if (projects == null)
-			throw new ObjectNotFoundException(projectinfotag, this
-					.getDataObjectClass());
-		return projects;
-	}
-	
-	/**
-	 * @see org.wise.portal.dao.impl.AbstractHibernateDao#getFindAllQuery()
-	 */
-	@Override
-	protected String getFindAllQuery() {
-		return FIND_ALL_QUERY;
-	}
-	
-	/**
-	 * @see org.wise.portal.dao.impl.AbstractHibernateDao#getDataObjectClass()
-	 */
-	@Override
-	protected Class<? extends ProjectImpl> getDataObjectClass() {
-		return ProjectImpl.class;
-	}
+  @PersistenceContext
+  private EntityManager entityManager;
 
-	public Project createEmptyProject() {
-		return new ProjectImpl();
-	}
+  private static final String FIND_ALL_QUERY = "from ProjectImpl";
 
-	public List<Project> retrieveListByInfo(ProjectInfo projectinfo)
-		throws ObjectNotFoundException {
-	    
-	    return this.retrieveListByTag(projectinfo.getFamilyTag());
-	}
-	
-	/**
-	 * @see org.wise.portal.dao.project.ProjectDao#getProjectListByUAR(net.sf.sail.webapp.domain.User, java.lang.String)
-	 */
-	public List<Project> getProjectListByUAR(User user, String role){
-		String q = "select project from ProjectImpl project inner join project." +
-			role + "s " + role + " where " + role + ".id='" + user.getId() + "'";
-		return (List<Project>) this.getHibernateTemplate().find(q);
-	}
-	
-	/**
-	 * @see org.wise.portal.dao.project.ProjectDao#getProjectList(java.lang.String)
-	 */
-	public List<Project> getProjectList(String query){
-		return (List<Project>) this.getHibernateTemplate().find(query);
-	}
+  @Override
+  protected String getFindAllQuery() {
+    return FIND_ALL_QUERY;
+  }
 
-	/**
-	 * @see org.wise.portal.dao.SimpleDao#getList()
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	public List<Project> getList() {
-		return (List<Project>) this.getHibernateTemplate().find(this.getFindAllQuery());
-	}
-	
-	/**
-	 * @see org.wise.portal.dao.SimpleDao#getById(java.lang.Integer)
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	public Project getById(Serializable id) throws ObjectNotFoundException {
-		Project object = null;
-		try {
-			object = (Project) this.getHibernateTemplate().get(
-					this.getDataObjectClass(),  Long.valueOf(id.toString()));
-		} catch (NumberFormatException e) {
-			return null;
-		}
-		if (object == null)
-			throw new ObjectNotFoundException((Long) id, this.getDataObjectClass());
-		
-		return object;
-	}
+  @Override
+  protected Class<? extends ProjectImpl> getDataObjectClass() {
+    return ProjectImpl.class;
+  }
 
-	@SuppressWarnings("unchecked")
-	public List<Project> getProjectListByOwner(User owner) {
-		if (owner == null) {
-			return new ArrayList<Project>();
-		}
+  public Project createEmptyProject() {
+    return new ProjectImpl();
+  }
 
-		Session session = this.getHibernateTemplate().getSessionFactory().getCurrentSession();
-		List<Project> result = session.createCriteria(ProjectImpl.class)
-				.add(Restrictions.eq("owner", owner))
-				.addOrder(Order.desc("id"))
-				.list();
+  private CriteriaBuilder getCriteriaBuilder() {
+    Session session = this.getHibernateTemplate().getSessionFactory().getCurrentSession();
+    return session.getCriteriaBuilder();
+  }
 
-		return result;
-	}
+  @SuppressWarnings("unchecked")
+  public List<Project> getSharedProjectsWithoutRun(User user) {
+    Session session = this.getHibernateTemplate().getSessionFactory().getCurrentSession();
+    CriteriaBuilder cb = session.getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    Root<UserImpl> userRoot = cq.from(UserImpl.class);
+    Subquery<RunImpl> runProjectIds = getRunProjectIds(cq);
+    List<Predicate> predicates = new ArrayList<>();
+    predicates.add(cb.equal(userRoot.get("id"), user.getId()));
+    predicates.add(cb.isMember(userRoot.get("id"), projectRoot.<Set<User>>get("sharedowners")));
+    predicates.add(cb.not(projectRoot.get("id").in(runProjectIds)));
+    cq.select(projectRoot).where(predicates.toArray(new Predicate[predicates.size()]));
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    List<ProjectImpl> projectResultList = query.getResultList();
+    return (List<Project>) (Object) projectResultList;
+  }
 
-	/**
-	 * @see org.wise.portal.dao.project.ProjectDao#getProjectListByTags(java.util.Set)
-	 */
-	@SuppressWarnings("unchecked")
-	@Transactional
-	public List<Project> getProjectListByTagNames(Set<String> tagNames) {
-		String tagString = "";
-		for(String name : tagNames){
-			tagString += "'" + name + "',";
-		}
-		tagString = tagString.substring(0, tagString.length() - 1);
-		
-		String q = "select distinct project from ProjectImpl project inner join project.tags tag with tag.name in (" + tagString + ") ";			
-		List<Project> projects = (List<Project>) this.getHibernateTemplate().find(q);
-		List<Project> result = new ArrayList<Project>();
-		for (Project project : projects) {
-			int numMatches = 0;
-			for (Tag projectTag : project.getTags()) {
-				if (tagNames.contains(projectTag.getName())) {
-					numMatches++;
-				}
-			}
-			if (numMatches == tagNames.size()) {
-				result.add(project);
-			}
-		}
-		return result;
-	}
-	
-	/**
-	 * @see org.wise.portal.dao.project.ProjectDao#getProjectListByAuthorName(java.lang.String)
-	 */
-	@Override
-	public List<Project> getProjectListByAuthorName(String authorName) {
-		List<Project> projects = (List<Project>) this
-				.getHibernateTemplate()
-				.findByNamedParam(
-						"from ProjectImpl as project where project.metadata.author like :authorName",
-						"authorName", "%"+authorName+"%");
-		return projects;
-	}
+  private Subquery<RunImpl> getRunProjectIds(CriteriaQuery cq) {
+    Subquery<RunImpl> runsSubquery = cq.subquery(RunImpl.class);
+    Root<RunImpl> runRoot = runsSubquery.from(RunImpl.class);
+    runsSubquery.select(runRoot.get("project").get("id"));
+    return runsSubquery;
+  }
 
-	/**
-	 * @see org.wise.portal.dao.project.ProjectDao#getProjectListByTitle(java.lang.String)
-	 */
-	@Override
-	public List<Project> getProjectListByTitle(String title) {
-		List<Project> projects = (List<Project>) this
-				.getHibernateTemplate()
-				.findByNamedParam(
-						"from ProjectImpl as project where project.name like :title",
-						"title", "%"+title+"%");
-		return projects;
-	}
+  @SuppressWarnings("unchecked")
+  public List<Project> getProjectListByUAR(User user, String role) {
+    CriteriaBuilder cb = getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    Root<UserImpl> userRoot = cq.from(UserImpl.class);
+    List<Predicate> predicates = new ArrayList<>();
+    predicates.add(cb.equal(userRoot.get("id"), user.getId()));
+    predicates.add(cb.isMember(userRoot, projectRoot.<Set<UserImpl>>get(role)));
+    cq.select(projectRoot).where(predicates.toArray(new Predicate[predicates.size()]));
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    List<ProjectImpl> projectResultList = query.getResultList();
+    return (List<Project>) (Object) projectResultList;
+  }
 
-	
-	/**
-	 * @see org.wise.portal.dao.project.ProjectDao#getProjectWithoutMetadata(java.lang.Long)
-	 */
-	public Project getProjectWithoutMetadata(Long projectId){
-		try {
-			return (Project) this.getHibernateTemplate().get(this.getDataObjectClass(),  projectId);
-		} catch (NumberFormatException e) {
-			return null;
-		}
-	}
+  @SuppressWarnings("unchecked")
+  @Override
+  public List<Project> getList() {
+    CriteriaBuilder cb = getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    cq.select(projectRoot);
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    List<ProjectImpl> projectResultList = query.getResultList();
+    return (List<Project>) (Object) projectResultList;
+  }
 
-	/**
-	 * @see org.wise.portal.dao.project.ProjectDao#getProjectCopies(java.lang.Long)
-	 */
-	public List<Project> getProjectCopies(Long projectId) {
-		List<Project> projects = (List<Project>) this
-		.getHibernateTemplate()
-		.findByNamedParam(
-				"from ProjectImpl as project where project.parentProjectId = :parentProjectId",
-				"parentProjectId", projectId);
-		return projects;
-	}
+  @Override
+  public Project getById(Serializable id) throws ObjectNotFoundException {
+    CriteriaBuilder cb = getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    cq.select(projectRoot).where(cb.equal(projectRoot.get("id"), id));
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    try {
+      return query.setMaxResults(1).getSingleResult();
+    } catch(NoResultException e) {
+      throw new ObjectNotFoundException((Long) id, ProjectImpl.class);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public List<Project> getProjectListByOwner(User owner) {
+    CriteriaBuilder cb = getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    cq.select(projectRoot).where(cb.equal(projectRoot.get("owner").get("id"), owner.getId()))
+        .orderBy(cb.desc(projectRoot.get("id")));
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    List<ProjectImpl> projectResultList = query.getResultList();
+    return (List<Project>) (Object) projectResultList;
+  }
+
+  @SuppressWarnings("unchecked")
+  @Transactional
+  public List<Project> getProjectListByTagNames(Set<String> tagNames) {
+    CriteriaBuilder cb = getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    Root<TagImpl> tagRoot = cq.from(TagImpl.class);
+    cq.select(projectRoot).where(cb.and(tagRoot.get("name").in(tagNames),
+        cb.isMember(tagRoot, projectRoot.<Set<TagImpl>>get("tags")))).distinct(true);
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    List<ProjectImpl> projectResultList = query.getResultList();
+    return (List<Project>) (Object) projectResultList;
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public List<Project> getProjectListByAuthorName(String authorName) {
+    CriteriaBuilder cb = getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    cq.select(projectRoot).where(cb.like(
+        projectRoot.get("owner").get("userDetails").get("username"), "%" + authorName + "%"));
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    List<ProjectImpl> projectResultList = query.getResultList();
+    return (List<Project>) (Object) projectResultList;
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public List<Project> getProjectListByTitle(String title) {
+    CriteriaBuilder cb = getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    cq.select(projectRoot).where(cb.like(projectRoot.get("name"), "%" + title + "%"));
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    List<ProjectImpl> projectResultList = query.getResultList();
+    return (List<Project>) (Object) projectResultList;
+  }
+
+  @SuppressWarnings("unchecked")
+  public List<Project> getProjectCopies(Long parentProjectId) {
+    CriteriaBuilder cb = getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    cq.select(projectRoot).where(cb.equal(projectRoot.get("parentProjectId"), parentProjectId));
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    List<ProjectImpl> projectResultList = query.getResultList();
+    return (List<Project>) (Object) projectResultList;
+  }
+
+  @SuppressWarnings("unchecked")
+  public List<Project> getProjectsWithoutRuns(User user) {
+    Session session = this.getHibernateTemplate().getSessionFactory().getCurrentSession();
+    CriteriaBuilder cb = session.getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    Root<UserImpl> userRoot = cq.from(UserImpl.class);
+    Subquery<RunImpl> runProjectIds = getRunProjectIds(cq);
+    List<Predicate> predicates = new ArrayList<>();
+    predicates.add(cb.equal(userRoot.get("id"), user.getId()));
+    predicates.add(cb.equal(userRoot.get("id"), projectRoot.get("owner")));
+    predicates.add(cb.not(projectRoot.get("id").in(runProjectIds)));
+    cq.select(projectRoot).where(predicates.toArray(new Predicate[predicates.size()]));
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    List<ProjectImpl> projectResultList = query.getResultList();
+    return (List<Project>) (Object) projectResultList;
+  }
+
+  @SuppressWarnings("unchecked")
+  public List<Project> getAllSharedProjects() {
+    Session session = this.getHibernateTemplate().getSessionFactory().getCurrentSession();
+    CriteriaBuilder cb = session.getCriteriaBuilder();
+    CriteriaQuery<ProjectImpl> cq = cb.createQuery(ProjectImpl.class);
+    Root<ProjectImpl> projectRoot = cq.from(ProjectImpl.class);
+    cq.select(projectRoot).where(cb.isNotEmpty(projectRoot.get("sharedowners")));
+    TypedQuery<ProjectImpl> query = entityManager.createQuery(cq);
+    List<ProjectImpl> projectResultList = query.getResultList();
+    return (List<Project>) (Object) projectResultList;
+  }
+
+  @Override
+  public long getMaxProjectId() {
+    CriteriaBuilder cb = getCriteriaBuilder();
+    CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+    Root<ProjectImpl> runRoot = cq.from(ProjectImpl.class);
+    cq.select(cb.max(runRoot.<Long>get("id")));
+    TypedQuery<Long> query = entityManager.createQuery(cq);
+    try {
+      return query.getSingleResult();
+    } catch (NullPointerException e) {
+      return 0;
+    }
+  }
 }

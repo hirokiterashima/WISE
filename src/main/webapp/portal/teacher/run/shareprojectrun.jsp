@@ -5,16 +5,19 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta http-equiv="X-UA-Compatible" content="chrome=1" />
-<link rel="shortcut icon" href="${contextPath}/<spring:theme code="favicon"/>" />
+<%@ include file="../../favicon.jsp"%>
 <title><spring:message code="teacher.run.shareprojectrun.sharingPermissions"/></title>
 
 <link href="${contextPath}/<spring:theme code="globalstyles"/>" media="screen" rel="stylesheet"  type="text/css" />
 <link href="${contextPath}/<spring:theme code="stylesheet"/>" media="screen" rel="stylesheet"  type="text/css" />
 <link href="${contextPath}/<spring:theme code="teacherprojectstylesheet" />" media="screen" rel="stylesheet" type="text/css" />
 <link href="${contextPath}/<spring:theme code="teacherrunstylesheet" />" media="screen" rel="stylesheet" type="text/css" />
+<c:if test="${textDirection == 'rtl' }">
+    <link href="${contextPath}/<spring:theme code="rtlstylesheet"/>" rel="stylesheet" type="text/css" >
+</c:if>
 
 <script type="text/javascript" src="${contextPath}/<spring:theme code="generalsource"/>"></script>
- 
+
 <script type="text/javascript">
 //extend Array prototype
 Array.prototype.contains = function(obj) {
@@ -31,20 +34,20 @@ var teacherUsernamesString = "${teacher_usernames}";
 var teacherUsernames = teacherUsernamesString.split(":");
 
 //order the teacher user names alphabetically
-teacherUsernames = teacherUsernames.sort(function(userName1, userName2) {
+teacherUsernames = teacherUsernames.sort(function(username1, username2) {
 	var result = 0;
-	
-	if(userName1 != null && userName2 != null) {
-		var userName1LowerCase = userName1.toLowerCase();
-		var userName2LowerCase = userName2.toLowerCase();
-		
-		if(userName1LowerCase < userName2LowerCase) {
+
+	if(username1 != null && username2 != null) {
+		var username1LowerCase = username1.toLowerCase();
+		var username2LowerCase = username2.toLowerCase();
+
+		if(username1LowerCase < username2LowerCase) {
 			result = -1;
-		} else if(userName1LowerCase > userName2LowerCase) {
+		} else if(username1LowerCase > username2LowerCase) {
 			result = 1;
 		}
 	}
-	
+
 	return result;
 });
 
@@ -74,7 +77,7 @@ function findStringsContaining(what, all_array) {
 		if (all_array[i].toLowerCase().indexOf(what.toLowerCase()) > -1) {
 			resultArray.push(all_array[i]);
 		}
-	}	
+	}
 	return resultArray;
 }
 
@@ -85,21 +88,21 @@ function removeSharedUserClicked() {
 </script>
 </head>
 <body style="background:#FFFFFF;">
-<div class="dialogContent">		
+<div class="dialogContent">
 
 	<div id="sharingSearchBoxHelp" class="dialogSection"><spring:message code="teacher.run.shareprojectrun.toShareRunWithAnotherTeacher"/></div>
 	<div id="sharingSearchSelect">
-		<form:form method="post" commandName="addSharedTeacherParameters" autocomplete='off'>
+		<form:form method="post" modelAttribute="addSharedTeacherParameters" autocomplete='off'>
 			<spring:message code="teacher.run.shareprojectrun.wiseUser"/> <form:input path="sharedOwnerUsername" id="sharedOwnerUsernameInput" onkeyup="populatePossibilities(this.value)" size="30"/>
 		    <input type="submit" value="Save" />
 		</form:form>
 		<ul id="matchedUsernames"></ul>
 	</div>
-	
+
 	<table id="sharedProjectPermissions" class='wisetable'>
 		<tr>
 			<th><spring:message code="teacher.run.shareprojectrun.username"/></th>
-			<th><spring:message code="teacher.run.shareprojectrun.permissionLevel"/></th> 
+			<th><spring:message code="teacher.run.shareprojectrun.permissionLevel"/></th>
 			<th><spring:message code="teacher.run.shareprojectrun.options"/></th>
 		</tr>
 		<!--  display owner of the run -->
@@ -114,23 +117,23 @@ function removeSharedUserClicked() {
 				    </tr>
 			</c:otherwise>
 		</c:choose>
-		
+
 		<!--  display shared owners of the run -->
-		<c:forEach var="sharedowner" items="${run.sharedOwnersOrderedAlphabetically}">        
+		<c:forEach var="sharedowner" items="${run.sharedOwnersOrderedAlphabetically}">
 			    <tr>
 			        <td class="user">${sharedowner.userDetails.username}</td>
 				    <td align="left">
-				    	<form:form method="post" id="${sharedowner.userDetails.username}" commandName="${sharedowner.userDetails.username}" autocomplete='off'>
+				    	<form:form method="post" id="${sharedowner.userDetails.username}" modelAttribute="${sharedowner.userDetails.username}" autocomplete='off'>
 	            			<form:hidden path="sharedOwnerUsername" />
 				        	<form:radiobutton path="permission" onclick="javscript:this.form.submit();" value="ROLE_RUN_READ" /> <spring:message code="teacher.run.shareprojectrun.canViewProjectRun"/><br />
 				    	    <form:radiobutton path="permission" onclick="javscript:this.form.submit();" value="ROLE_RUN_GRADE" /> <spring:message code="teacher.run.shareprojectrun.canViewAndGradeProjectRun"/>
-				    	</form:form>			        
+				    	</form:form>
 					</td>
-					<td><form:form method="post" id="${sharedowner.userDetails.username}" commandName="${sharedowner.userDetails.username}" autocomplete='off'>
+					<td><form:form method="post" id="${sharedowner.userDetails.username}" modelAttribute="${sharedowner.userDetails.username}" autocomplete='off'>
 	            		<form:hidden path="sharedOwnerUsername" />
 	            		<input type="hidden" name="removeUserFromRun" value="true"></input>
 						<input type="submit" value="Remove this User" onclick="return removeSharedUserClicked();"></input>
-				    	</form:form>			        
+				    	</form:form>
 					</td>
 				</tr>
 		</c:forEach>

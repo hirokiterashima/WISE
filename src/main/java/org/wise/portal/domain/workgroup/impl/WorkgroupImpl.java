@@ -1,21 +1,21 @@
 /**
- * Copyright (c) 2008-2015 Regents of the University of California (Regents).
+ * Copyright (c) 2008-2017 Regents of the University of California (Regents).
  * Created by WISE, Graduate School of Education, University of California, Berkeley.
- * 
+ *
  * This software is distributed under the GNU General Public License, v3,
  * or (at your option) any later version.
- * 
+ *
  * Permission is hereby granted, without written agreement and without license
  * or royalty fees, to use, copy, modify, and distribute this software and its
  * documentation for any purpose, provided that the above copyright notice and
  * the following two paragraphs appear in all copies of this software.
- * 
+ *
  * REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE. THE SOFTWARE AND ACCOMPANYING DOCUMENTATION, IF ANY, PROVIDED
  * HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
  * MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
- * 
+ *
  * IN NO EVENT SHALL REGENTS BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
  * SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS,
  * ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
@@ -23,6 +23,7 @@
  */
 package org.wise.portal.domain.workgroup.impl;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.Column;
@@ -31,18 +32,22 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.Inheritance;
-import javax.persistence.InheritanceType;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 import javax.persistence.Version;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.wise.portal.domain.group.Group;
 import org.wise.portal.domain.group.impl.PersistentGroup;
-import org.wise.portal.domain.run.Offering;
-import org.wise.portal.domain.run.impl.OfferingImpl;
+import org.wise.portal.domain.Tag;
+import org.wise.portal.domain.impl.TagImpl;
+import org.wise.portal.domain.run.Run;
+import org.wise.portal.domain.run.impl.RunImpl;
 import org.wise.portal.domain.user.User;
 import org.wise.portal.domain.workgroup.Workgroup;
 
@@ -51,181 +56,115 @@ import org.wise.portal.domain.workgroup.Workgroup;
  */
 @Entity
 @Table(name = WorkgroupImpl.DATA_STORE_NAME)
-@Inheritance(strategy = InheritanceType.JOINED)
-public class WorkgroupImpl implements Workgroup {
+@Getter
+@Setter
+public class WorkgroupImpl implements Workgroup, Comparable<WorkgroupImpl> {
 
-    @Transient
-    public static final String DATA_STORE_NAME = "workgroups";
+  @Transient
+  public static final String DATA_STORE_NAME = "workgroups";
 
-    @Transient
-    public static final String COLUMN_NAME_OFFERING_FK = "offering_fk";
+  @Transient
+  private static final long serialVersionUID = 1L;
 
-    @Transient
-    public static final String COLUMN_NAME_GROUP_FK = "group_fk";
-    
-    @Transient
-    public static final String USERS_JOIN_COLUMN_NAME = "user_fk";
+  @Id
+  @GeneratedValue(strategy = GenerationType.AUTO)
+  public Long id = null;
 
-    @Transient
-    public static final String WORKGROUPS_JOIN_COLUMN_NAME = "workgroup_fk";
+  @Version
+  @Column(name = "OPTLOCK")
+  private Integer version = null;
 
-    @Transient
-    private static final long serialVersionUID = 1L;
+  @OneToOne(targetEntity = RunImpl.class, fetch = FetchType.LAZY)
+  @JoinColumn(name = "run_fk", nullable = false)
+  private Run run;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-	public Long id = null;
+  @OneToOne(targetEntity = PersistentGroup.class, fetch = FetchType.LAZY)
+  @JoinColumn(name = "group_fk", nullable = false)
+  private Group group = new PersistentGroup();
 
-    @Version
-    @Column(name = "OPTLOCK")
-    private Integer version = null;
+  @OneToOne(targetEntity = PersistentGroup.class, fetch = FetchType.LAZY)
+  @JoinColumn(name = "period")
+  private Group period;
 
-    @OneToOne(targetEntity = OfferingImpl.class, fetch = FetchType.LAZY)
-    @JoinColumn(name = COLUMN_NAME_OFFERING_FK, nullable = false)
-    private Offering offering;
+  @Column(name = "isTeacherWorkgroup")
+  private boolean teacherWorkgroup;
 
-    @OneToOne(targetEntity = PersistentGroup.class, fetch = FetchType.LAZY)
-    @JoinColumn(name = COLUMN_NAME_GROUP_FK, nullable = false)
-    private Group group = new PersistentGroup();
+  @ManyToMany(targetEntity = TagImpl.class, fetch = FetchType.LAZY)
+  @JoinTable(name = "workgroups_related_to_tags", joinColumns = { @JoinColumn(name = "workgroups_fk", nullable = false) }, inverseJoinColumns = @JoinColumn(name = "tags_fk", nullable = false))
+  private Set<Tag> tags = new HashSet<Tag>();
 
-    /**
-     * @see net.sf.sail.webapp.domain.Workgroup#getMembers()
-     */
-    public Set<User> getMembers() {
-        return this.group.getMembers();
+  public Set<User> getMembers() {
+    return this.group.getMembers();
+  }
+
+  public void addMember(User member) {
+    this.group.addMember(member);
+    this.group.setName(this.generateWorkgroupName());
+  }
+
+  public void removeMember(User member) {
+    this.group.getMembers().remove(member);
+  }
+
+  public void setMembers(Set<User> members) {
+    this.group.setMembers(members);
+  }
+
+  @Override
+  public void addTag(Tag tag) {
+    this.tags.add(tag);
+  }
+
+  @Override
+  public void removeTag(Tag tag) {
+    this.tags.remove(tag);
+  }
+
+  public int compareTo(WorkgroupImpl o) {
+    return this.id.compareTo(o.id);
+  }
+
+  public boolean isStudentWorkgroup() {
+    return !teacherWorkgroup;
+  }
+
+  public String generateWorkgroupName() {
+    String workgroupName = "";
+    for (User member : group.getMembers()) {
+      workgroupName += " " + member.getUserDetails().getUsername();
     }
+    return workgroupName;
+  }
 
-    /**
-     * @see net.sf.sail.webapp.domain.Workgroup#addMember(net.sf.sail.webapp.domain.User)
-     */
-    public void addMember(User member) {
-        this.group.addMember(member);
-        this.group.setName(this.generateWorkgroupName());
-    }
-    
-    /**
-     * @see net.sf.sail.webapp.domain.Workgroup#removeMember(net.sf.sail.webapp.domain.User)
-     */
-    public void removeMember(User member) {
-    	this.group.getMembers().remove(member);
-    }
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((group == null) ? 0 : group.hashCode());
+    result = prime * result
+      + ((run == null) ? 0 : run.hashCode());
+    return result;
+  }
 
-    /**
-     * @see net.sf.sail.webapp.domain.Workgroup#setMembers(java.util.Set)
-     */
-    public void setMembers(Set<User> members) {
-        this.group.setMembers(members);
-    }
-    
-	/**
-	 * @return the group
-	 */
-	public Group getGroup() {
-		return group;
-	}
-
-	/**
-	 * @param group the group to set
-	 */
-	public void setGroup(Group group) {
-		this.group = group;
-	}
-
-    /**
-     * @see net.sf.sail.webapp.domain.Workgroup#getOffering()
-     */
-    public Offering getOffering() {
-        return offering;
-    }
-
-    /**
-     * @see net.sf.sail.webapp.domain.Workgroup#setOffering(net.sf.sail.webapp.domain.Offering)
-     */
-    public void setOffering(Offering offering) {
-        this.offering = offering;
-    }
-
-    /**
-     * @return the id
-     */
-    public Long getId() {
-        return id;
-    }
-
-    /**
-     * @param id
-     *            the id to set
-     */
-    @SuppressWarnings("unused")
-    private void setId(Long id) {
-        this.id = id;
-    }
-    
-    /**
-     * @see net.sf.sail.webapp.domain.Workgroup#generateWorkgroupName()
-     */
-	public String generateWorkgroupName() {
-		String workgroupName = "";
-		for (User member : group.getMembers()) {
-			workgroupName += " " + member.getUserDetails().getUsername();
-		}
-		return workgroupName;
-	}
-
-
-    /**
-     * @return the version
-     */
-    @SuppressWarnings("unused")
-    private Integer getVersion() {
-        return version;
-    }
-
-    /**
-     * @param version
-     *            the version to set
-     */
-    @SuppressWarnings("unused")
-    private void setVersion(Integer version) {
-        this.version = version;
-    }
-
-	/**
-	 * @see java.lang.Object#hashCode()
-	 */
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((group == null) ? 0 : group.hashCode());
-		result = prime * result
-				+ ((offering == null) ? 0 : offering.hashCode());
-		return result;
-	}
-
-	/**
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		final WorkgroupImpl other = (WorkgroupImpl) obj;
-		if (group == null) {
-			if (other.group != null)
-				return false;
-		} else if (!group.equals(other.group))
-			return false;
-		if (offering == null) {
-			if (other.offering != null)
-				return false;
-		} else if (!offering.equals(other.offering))
-			return false;
-		return true;
-	}
-
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    final WorkgroupImpl other = (WorkgroupImpl) obj;
+    if (group == null) {
+      if (other.group != null)
+        return false;
+    } else if (!group.equals(other.group))
+      return false;
+    if (run == null) {
+      if (other.run != null)
+        return false;
+    } else if (!run.equals(other.run))
+      return false;
+    return true;
+  }
 }

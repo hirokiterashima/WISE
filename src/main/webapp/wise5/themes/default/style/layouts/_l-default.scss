@@ -4,14 +4,15 @@
 .l-constrained {
   margin-left: auto;
   margin-right: auto;
-  max-width: $layout-breakpoint-md;
+  max-width: 100%;
   position: relative;
 
   @media (min-width: $layout-breakpoint-xs) {
-      width: 100%;
+      width: $layout-breakpoint-md;
   }
 }
 
 .l-constrained-md {
-  max-width: $layout-breakpoint-sm;
+  width: $layout-breakpoint-sm;
+  max-width: 100%;
 }

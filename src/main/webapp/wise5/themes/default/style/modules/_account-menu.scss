@@ -1,5 +1,5 @@
 .account-menu {
-    border-radius: 4px;
+    border-radius: $card-border-radius;
     padding: 0;
     font-size: $body-font-size-base;
     max-width: 380px;
@@ -46,8 +46,27 @@
     }
 }
 
-.account-menu__caret--notification {
+.account-menu__caret--pause, .account-menu__caret--notification {
     right: 80px;
+}
+
+.account-menu__caret--notification--with-pause {
+    right: 132px;
+}
+
+[dir=rtl] {
+  .account-menu__caret {
+    right: auto;
+    left: 28px;
+  }
+  .account-menu__caret--pause, .account-menu__caret--notification {
+    left:80px;
+    right:auto;
+  }
+  .account-menu__caret--notification--with-pause {
+      left: 132px;
+      right:auto;
+  }
 }
 
 .account-menu__info {
@@ -55,7 +74,7 @@
 }
 
 .account-menu__info__title {
-    font-weight: 700;
+    font-weight: 500;
 }
 
 .account-menu__info__team {
@@ -84,9 +103,6 @@
     }
 }
 
-.account-menu__score {
-}
-
 .account-menu__grade {
     position: relative;
     margin-right: 4px;
@@ -105,4 +121,8 @@
 
 .account-menu__actions {
     background-color: color('gray-lightest');
+}
+
+.account-menu__control {
+    padding: 16px;
 }

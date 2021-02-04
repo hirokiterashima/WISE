@@ -10,7 +10,7 @@
 	<link href="${contextPath}/<spring:theme code="stylesheet"/>" media="screen" rel="stylesheet" type="text/css" />
 	<link href="${contextPath}/<spring:theme code="teacherprojectstylesheet" />" media="screen" rel="stylesheet" type="text/css" />
 	<link href="${contextPath}/<spring:theme code="teacherhomepagestylesheet" />" media="screen" rel="stylesheet" type="text/css" />
-	<link rel="shortcut icon" href="${contextPath}/<spring:theme code="favicon"/>" />
+	<%@ include file="../../favicon.jsp"%>
 
 	<script src="${contextPath}/<spring:theme code="generalsource" />" type="text/javascript"></script>
 
@@ -48,10 +48,10 @@
 		</c:if>
 
 		<br>
-		<div>Please choose a CSV file with student account information. <a href="${contextPath}/portal/pages/resources/WISE_BatchCreateUserAccounts_Sample.csv"><spring:message code="admin.account.batchcreateuseraccounts.sampleFile" /></a></div>
+		<div>Please choose a CSV file with student account information. <a href="${contextPath}/pages/resources/WISE_BatchCreateUserAccounts_Sample.csv"><spring:message code="admin.account.batchcreateuseraccounts.sampleFile" /></a></div>
 		<br/>
 		<form:form method="post" action="batchcreateuseraccounts.html"
-				   commandName="csvFile" id="csvFileForm" enctype="multipart/form-data" autocomplete='off' onsubmit="return validateForm();">
+				   modelAttribute="csvFile" id="csvFileForm" enctype="multipart/form-data" autocomplete='off' onsubmit="return validateForm();">
 			<input type="file" name="file" id="csvFile"/>
 			<br/><br/>
 			<input type="submit" value="Submit" />
